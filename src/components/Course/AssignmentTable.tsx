@@ -170,96 +170,107 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
   }, [assignments, groups]); // Recalculate only when inputs change
 
   return (
-    <div className="overflow-x-auto bg-white shadow border border-gray-200 rounded-lg">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50 sticky top-0 z-10">
-          {" "}
-          {/* Sticky header */}
-          <tr>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
-            >
-              Name
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
-            >
-              Score
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
-            >
-              Out of
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap"
-              title="Assignment's contribution to the final course grade."
-            >
-              Weight (%)
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40 whitespace-nowrap"
-            >
-              Group
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-28 whitespace-nowrap"
-              title="Weight relative to others in the same group (if manual weighting used)."
-            >
-              Weight in Group
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
-            >
-              Drop
-            </th>
-            <th
-              scope="col"
-              className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
-            >
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {assignmentsWithCalculatedData.length > 0 ? (
-            assignmentsWithCalculatedData.map((assignmentData, index) => (
-              <AssignmentRow
-                key={assignmentData.id}
-                // Pass original assignment data to row for local state management
-                assignment={
-                  assignments.find((a) => a.id === assignmentData.id)!
-                }
-                rowIndex={index}
-                totalRows={assignmentsWithCalculatedData.length}
-                groups={groups}
-                onSave={handleSaveAssignment}
-                courseId={courseId}
-                onAddRowBelow={() => handleAddAssignment(true)}
-                // Pass calculated data needed for display
-                effectiveWeight={assignmentData.effectiveWeight}
-                groupUsesManualWeight={assignmentData.groupUsesManualWeight}
-              />
-            ))
-          ) : (
+    <div className="overflow-x-hidden w-full bg-white shadow border border-gray-200 rounded-lg">
+      <div className="overflow-x-auto w-full">
+        <table className="divide-y min-w-full divide-gray-200 text-sm ">
+          <thead className="bg-gray-50 sticky top-0 z-10">
+            {" "}
+            {/* Sticky header */}
             <tr>
-              <td
-                colSpan={8}
-                className="px-6 py-10 text-center text-sm text-gray-500 italic"
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
               >
-                No assignments added yet. Click button below to add one.
-              </td>
+                Name
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
+              >
+                Score
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
+              >
+                Out of
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap"
+                title="Assignment's contribution to the final course grade."
+              >
+                Weight (%)
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40 whitespace-nowrap"
+              >
+                Group
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-28 whitespace-nowrap"
+                title="Weight relative to others in the same group (if manual weighting used)."
+              >
+                Weight in Group
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
+              >
+                Drop
+              </th>
+              {/* New Extra Credit header */}
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
+                title="Extra Credit"
+              >
+                Extra Credit
+              </th>
+              <th
+                scope="col"
+                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
+                title="Actions"
+              >
+                Actions
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {assignmentsWithCalculatedData.length > 0 ? (
+              assignmentsWithCalculatedData.map((assignmentData, index) => (
+                <AssignmentRow
+                  key={assignmentData.id}
+                  // Pass original assignment data to row for local state management
+                  assignment={
+                    assignments.find((a) => a.id === assignmentData.id)!
+                  }
+                  rowIndex={index}
+                  totalRows={assignmentsWithCalculatedData.length}
+                  groups={groups}
+                  onSave={handleSaveAssignment}
+                  courseId={courseId}
+                  onAddRowBelow={() => handleAddAssignment(true)}
+                  // Pass calculated data needed for display
+                  effectiveWeight={assignmentData.effectiveWeight}
+                  groupUsesManualWeight={assignmentData.groupUsesManualWeight}
+                />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-6 py-10 text-center text-sm text-gray-500 italic"
+                >
+                  No assignments added yet. Click button below to add one.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
       {/* Add Button - Placed after the table for better flow */}
       <div className="px-4 py-3 text-left bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <button

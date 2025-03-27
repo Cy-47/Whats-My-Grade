@@ -1,8 +1,7 @@
-// src/components/Layout/MainLayout.tsx
-import React, { ReactNode } from "react";
+import React, { ReactNode, useState } from "react";
 import CourseList from "../Sidebar/CourseList";
 import { useAuth } from "../../contexts/AuthContext";
-import { FaSignOutAlt } from "react-icons/fa";
+import { FaSignOutAlt, FaBars, FaTimes } from "react-icons/fa";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -10,10 +9,52 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { currentUser, signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 text-gray-900">
-      <aside className="w-60 md:w-64 flex-shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col shadow-sm relative">
+    <div className="flex h-screen w-screen overflow-hidden bg-gray-50 text-gray-900 relative">
+      {/* Mobile header with toggle */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 w-full flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
+        <button onClick={() => setSidebarOpen(true)} aria-label="Open courses">
+          <FaBars className="text-xl" />
+        </button>
+        {/* Removed Courses text */}
+        <div />
+        {currentUser && (
+          <button onClick={signOut} aria-label="Sign Out">
+            <FaSignOutAlt className="text-xl" />
+          </button>
+        )}
+      </header>
+      {/* Add padding for fixed header on mobile */}
+      <div className="md:hidden h-16"></div>
+
+      {/* Mobile bottom sheet for courses */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black opacity-50"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
+          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-white p-4 shadow-lg rounded-t-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold">Courses</h4>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close courses"
+              >
+                <FaTimes className="text-xl" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-60">
+              <CourseList />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:flex-shrink-0 w-60 xl:w-64 bg-white border-r border-gray-200 p-4 flex flex-col shadow-sm ">
         <div className="mb-4 pb-3 border-b border-gray-200">
           <h4 className="text-lg font-semibold text-gray-800">Courses</h4>
           {currentUser && (
@@ -35,18 +76,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             </div>
           )}
         </div>
-        <div className="flex-grow overflow-y-auto -mr-4 pr-4">
-          {" "}
-          {/* Scroll container */}
+        <div className="flex-grow overflow-y-auto">
           <CourseList />
         </div>
       </aside>
-      <main className="flex-grow p-5 sm:p-6 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
-          {" "}
-          {/* Content max width */}
-          {children}
-        </div>
+
+      {/* Main content */}
+      <main className="flex-grow p-6 overflow-auto">
+        <div className="max-w-6xl mx-auto">{children}</div>
       </main>
     </div>
   );

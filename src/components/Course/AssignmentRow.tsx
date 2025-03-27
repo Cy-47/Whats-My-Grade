@@ -161,6 +161,13 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
     onSave(assignment.id, { isDropped: newDroppedState }); // Save checkbox change immediately
   };
 
+  // New: Toggle extra credit option
+  const toggleExtraCredit = () => {
+    const newExtraCredit = !localAssignment.isExtraCredit;
+    setLocalAssignment((prev) => ({ ...prev, isExtraCredit: newExtraCredit }));
+    onSave(assignment.id, { isExtraCredit: newExtraCredit });
+  };
+
   // Handler for delete button
   const handleDelete = async () => {
     if (
@@ -330,6 +337,19 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           title="Drop assignment"
           aria-label="Drop assignment"
         />{" "}
+      </td>
+      {/* Extra Credit Checkbox */}
+      <td className="assignment-cell assignment-cell-center">
+        <input
+          type="checkbox"
+          name="isExtraCredit"
+          checked={!!localAssignment.isExtraCredit}
+          onChange={toggleExtraCredit}
+          disabled={isDeleting}
+          className="assignment-checkbox"
+          title="Mark as extra credit"
+          aria-label="Extra credit"
+        />
       </td>
       {/* Actions (Delete) Button */}
       <td className="assignment-cell-last assignment-cell-center">

@@ -45,6 +45,7 @@ export interface Assignment {
   weight: number; // Direct weight percentage (used ONLY if not in a group)
   deadline?: Timestamp | null; // Optional deadline
   isDropped: boolean; // Flag to exclude from calculations
+  isExtraCredit: boolean; // Flag to indicate extra credit (adds to score but not total)
   groupId?: string | null; // Optional ID of the AssignmentGroup it belongs to
   relativeWeightInGroup?: number | null; // Optional manual weight WITHIN the group
   createdAt: Timestamp;

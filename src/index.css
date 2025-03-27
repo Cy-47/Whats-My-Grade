@@ -18,12 +18,6 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-html,
-body {
-  overflow: hidden; /* Prevents the entire page body from scrolling */
-  height: 100%; /* Often needed in conjunction with overflow:hidden for child height % */
-}
-
 /* --- Custom Component Classes --- */
 @layer components {
   /* Base style for Assignment Table cells */

@@ -36,7 +36,10 @@ export const calculateOverallGrade = (
     const weight = typeof a.weight === "number" && a.weight > 0 ? a.weight : 0;
     if (percentage !== null && weight > 0) {
       totalWeightedScore += percentage * weight;
-      totalEffectiveWeight += weight;
+      // Only count non-extra credit assignments towards effective weight
+      if (!a.isExtraCredit) {
+        totalEffectiveWeight += weight;
+      }
     }
     // Ungraded assignments or those with zero/invalid weight don't contribute yet
   });
@@ -53,32 +56,26 @@ export const calculateOverallGrade = (
       return;
     }
 
-    let groupScoreSum = 0; // For equal point-based weighting score part
-    let groupTotalPossible = 0; // For equal point-based weighting total part
-    let groupManualWeightTotal = 0; // Sum of relative weights in group for manual weighting
-    let groupWeightedScoreSumManual = 0; // Weighted score sum for manual weighting
-
-    // Check if *any* assignment in this group uses manual relative weighting
+    // --- Manual Weighting within Group ---
+    // Check if any assignment has manual relative weight (for non-extra credit)
     const usesManualWeight = groupAssignments.some(
       (a) =>
         typeof a.relativeWeightInGroup === "number" &&
         a.relativeWeightInGroup > 0
     );
-
     if (usesManualWeight) {
-      // --- Manual Weighting within Group ---
-      // Calculate total manual weight within the group for normalization
+      let groupManualWeightTotal = 0;
+      let groupWeightedScoreSumManual = 0;
+      // Count only non-extra credit assignments for normalization
       groupAssignments.forEach((a) => {
         const relWeight =
           typeof a.relativeWeightInGroup === "number"
             ? a.relativeWeightInGroup
             : 0;
-        if (relWeight > 0) {
+        if (relWeight > 0 && !a.isExtraCredit) {
           groupManualWeightTotal += relWeight;
         }
       });
-
-      // If total relative weight is positive, calculate contribution
       if (groupManualWeightTotal > 0) {
         groupAssignments.forEach((a) => {
           const percentage = safePercentage(a.score, a.totalScore);
@@ -86,25 +83,32 @@ export const calculateOverallGrade = (
             typeof a.relativeWeightInGroup === "number"
               ? a.relativeWeightInGroup
               : 0;
-          // Include only graded items with positive relative weight
           if (percentage !== null && relativeWeight > 0) {
-            // Contribution to group score = (item score %) * (item relative weight / total relative weight in group)
-            groupWeightedScoreSumManual +=
-              percentage * (relativeWeight / groupManualWeightTotal);
+            if (!a.isExtraCredit) {
+              groupWeightedScoreSumManual +=
+                percentage * (relativeWeight / groupManualWeightTotal);
+            } else {
+              // Extra credit: add its contribution directly without counting group weight
+              totalWeightedScore +=
+                percentage *
+                (relativeWeight / groupManualWeightTotal) *
+                groupWeight;
+            }
           }
         });
-        // The group's score (0 to 1) is the sum of normalized weighted contributions
-        const groupScore = groupWeightedScoreSumManual;
-        // Add the group's overall contribution to the course total
-        totalWeightedScore += groupScore * groupWeight;
-        totalEffectiveWeight += groupWeight; // The group's weight counts towards the total effective weight
+        if (groupWeightedScoreSumManual) {
+          totalWeightedScore += groupWeightedScoreSumManual * groupWeight;
+          totalEffectiveWeight += groupWeight;
+        }
       }
-      // If manual weights sum to 0, group contributes nothing yet.
     } else {
       // --- Equal Weighting within Group (Based on points) ---
+      let groupScoreSum = 0;
+      let groupTotalPossible = 0;
+      // Process regular (non-extra credit) assignments
       groupAssignments.forEach((a) => {
-        // Only include graded assignments with valid points
         if (
+          !a.isExtraCredit &&
           typeof a.score === "number" &&
           typeof a.totalScore === "number" &&
           a.totalScore > 0
@@ -113,15 +117,27 @@ export const calculateOverallGrade = (
           groupTotalPossible += a.totalScore;
         }
       });
-
-      // Calculate group score only if there were valid points possible
       if (groupTotalPossible > 0) {
-        const groupScore = groupScoreSum / groupTotalPossible; // Group score (0 to 1)
-        // Add the group's contribution to the overall total
+        const groupScore = groupScoreSum / groupTotalPossible;
         totalWeightedScore += groupScore * groupWeight;
-        totalEffectiveWeight += groupWeight; // Group's weight counts
+        totalEffectiveWeight += groupWeight;
       }
-      // If groupTotalPossible is 0, group contributes nothing yet
+      // Process extra credit assignments separately
+      groupAssignments.forEach((a) => {
+        if (
+          a.isExtraCredit &&
+          typeof a.score === "number" &&
+          typeof a.totalScore === "number" &&
+          a.totalScore > 0
+        ) {
+          const percentage = a.score / a.totalScore;
+          const bonusWeight =
+            typeof a.relativeWeightInGroup === "number"
+              ? a.relativeWeightInGroup
+              : 0;
+          totalWeightedScore += percentage * bonusWeight;
+        }
+      });
     }
   });
 
