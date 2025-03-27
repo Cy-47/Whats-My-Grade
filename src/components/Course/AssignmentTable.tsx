@@ -282,7 +282,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
               <th scope="col" className="w-5 px-1" title="Drag to reorder"></th>
               <th
                 scope="col"
-                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-20"
               >
                 Name
               </th>
@@ -303,11 +303,11 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
                 className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap"
                 title="Assignment's contribution to the final course grade."
               >
-                Weight (%)
+                Weight
               </th>
               <th
                 scope="col"
-                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40 whitespace-nowrap"
+                className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40 whitespace-nowrap text-center"
               >
                 Group
               </th>
@@ -353,26 +353,34 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
                   strategy={verticalListSortingStrategy}
                 >
                   {assignmentsWithCalculatedData.map(
-                    (assignmentData, index) => (
-                      <SortableAssignmentRow
-                        key={assignmentData.id}
-                        id={assignmentData.id}
-                        rowProps={{
-                          assignment: assignments.find(
-                            (a: Assignment) => a.id === assignmentData.id
-                          )!,
-                          rowIndex: index,
-                          totalRows: assignmentsWithCalculatedData.length,
-                          groups: groups,
-                          onSave: handleSaveAssignment,
-                          courseId: courseId,
-                          onAddRowBelow: () => handleAddAssignment(true),
-                          effectiveWeight: assignmentData.effectiveWeight,
-                          groupUsesManualWeight:
-                            assignmentData.groupUsesManualWeight,
-                        }}
-                      />
-                    )
+                    (assignmentData, index) => {
+                      // Find the matching assignment and only render if it exists
+                      const matchingAssignment = assignments.find(
+                        (a) => a.id === assignmentData.id
+                      );
+
+                      // Skip rendering if no matching assignment found
+                      if (!matchingAssignment) return null;
+
+                      return (
+                        <SortableAssignmentRow
+                          key={assignmentData.id}
+                          id={assignmentData.id}
+                          rowProps={{
+                            assignment: matchingAssignment,
+                            rowIndex: index,
+                            totalRows: assignmentsWithCalculatedData.length,
+                            groups: groups,
+                            onSave: handleSaveAssignment,
+                            courseId: courseId,
+                            onAddRowBelow: () => handleAddAssignment(true),
+                            effectiveWeight: assignmentData.effectiveWeight,
+                            groupUsesManualWeight:
+                              assignmentData.groupUsesManualWeight,
+                          }}
+                        />
+                      );
+                    }
                   )}
                 </SortableContext>
               </DndContext>

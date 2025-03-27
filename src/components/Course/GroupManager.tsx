@@ -193,7 +193,7 @@ const GroupManager: React.FC<GroupManagerProps> = ({
             <thead>
               <tr>
                 <th className="simple-table-header">Name</th>
-                <th className="simple-table-header w-24">Weight (%)</th>
+                <th className="simple-table-header w-24">Weight</th>
                 <th className="simple-table-header w-28 simple-table-cell-actions">
                   Actions
                 </th>

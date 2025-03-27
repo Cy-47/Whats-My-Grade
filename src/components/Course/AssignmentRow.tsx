@@ -257,16 +257,14 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
       {/* Weight (%) Display/Input */}
       <td className="assignment-cell assignment-cell-center">
         {isGrouped ? (
-          <span className="calculated-weight-display">
-            {effectiveWeight !== null
-              ? `${effectiveWeight.toFixed(2)}%`
-              : "N/A"}
+          <span className="calculated-weight-display text-center block">
+            {effectiveWeight !== null ? `${effectiveWeight.toFixed(2)}` : "N/A"}
           </span>
         ) : (
           <input
             {...getInputProps("weight", "number", "assignment-input-center")}
             placeholder={"0"}
-            title="Assignment weight (%)"
+            title="Assignment weight"
             step="any"
             min="0"
             max="100"
@@ -279,7 +277,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         <select
           {...getInputProps("groupId", "select")}
           value={localAssignment.groupId || ""}
-          className="assignment-select"
+          className="assignment-select text-center block"
           aria-label="Assignment Group"
           title="Assign to a group..."
         >

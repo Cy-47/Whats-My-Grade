@@ -40,6 +40,11 @@ export function SortableAssignmentRow({ id, rowProps }: SortableRowProps) {
     zIndex: isDragging ? 1 : 0,
   };
 
+  // Ensure assignment exists to prevent errors
+  if (!rowProps.assignment) {
+    return null; // Don't render anything if assignment is undefined
+  }
+
   const isDropped = rowProps.assignment.isDropped;
   const isDroppedClass = isDropped ? "opacity-60 line-through bg-gray-50" : "";
 
