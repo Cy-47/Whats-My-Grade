@@ -8,7 +8,6 @@ import {
   onSnapshot,
   orderBy,
   updateDoc,
-  writeBatch,
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -24,13 +23,7 @@ import {
   calculateOverallGrade,
   getLetterGrade,
 } from "../../utils/gradeCalculations";
-import {
-  FaInfoCircle,
-  FaTrash,
-  FaPencilAlt,
-  FaSave,
-  FaTimes,
-} from "react-icons/fa";
+import { FaInfoCircle, FaTrash } from "react-icons/fa";
 import { Tooltip } from "react-tooltip";
 import "react-tooltip/dist/react-tooltip.css"; // Tooltip CSS
 
