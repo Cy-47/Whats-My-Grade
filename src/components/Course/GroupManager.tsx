@@ -11,7 +11,7 @@ import {
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { AssignmentGroup, Assignment } from "../../types";
-import { FaEdit, FaTrash, FaSave, FaTimes, FaPlus } from "react-icons/fa";
+import { FaTrash, FaPlus } from "react-icons/fa";
 
 interface GroupManagerProps {
   courseId: string;
@@ -25,89 +25,34 @@ const GroupManager: React.FC<GroupManagerProps> = ({
   assignments,
 }) => {
   const { currentUser } = useAuth();
-  const [editingGroups, setEditingGroups] = useState<
-    Record<string, AssignmentGroup>
-  >({});
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupWeight, setNewGroupWeight] = useState<number | "">(10);
   const [isAdding, setIsAdding] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [editingField, setEditingField] = useState<{
+    groupId: string;
+    field: keyof AssignmentGroup;
+  } | null>(null);
 
-  // Clear editing state if props change externally
-  useEffect(() => {
-    setEditingGroups({});
-  }, [groups]);
-
-  // Update temporary edit state on input change
-  const handleEditChange = (
+  const handleGroupFieldChange = async (
     groupId: string,
     field: keyof AssignmentGroup,
     value: string | number
   ) => {
-    setEditingGroups((prev) => ({
-      ...prev,
-      [groupId]: {
-        ...(prev[groupId] || groups.find((g) => g.id === groupId)!),
-        [field]:
-          field === "weight"
-            ? value === ""
-              ? ""
-              : parseFloat(value as string)
-            : value,
-      },
-    }));
-    setErrors((prev) => ({ ...prev, [groupId]: "" })); // Clear error on edit
-  };
-
-  // Save edited group data to Firestore
-  const handleSaveEdit = async (groupId: string) => {
-    if (!currentUser) {
-      setErrors((prev) => ({ ...prev, [groupId]: "Auth error." }));
-      return;
-    }
-    const editedGroup = editingGroups[groupId];
-    if (
-      !editedGroup ||
-      editedGroup.name.trim() === "" ||
-      isNaN(Number(editedGroup.weight)) ||
-      Number(editedGroup.weight) < 0
-    ) {
-      setErrors((prev) => ({
-        ...prev,
-        [groupId]: "Invalid name or non-negative weight.",
-      }));
-      return;
-    }
+    if (!currentUser) return;
     const groupRef = doc(
       db,
       `users/${currentUser.uid}/courses/${courseId}/assignmentGroups/${groupId}`
     );
     try {
-      setErrors((prev) => ({ ...prev, [groupId]: "" })); // Clear error before attempt
-      await updateDoc(groupRef, {
-        name: editedGroup.name.trim(),
-        weight: Number(editedGroup.weight),
-      });
-      // Exit edit mode on success
-      setEditingGroups((prev) => {
-        const n = { ...prev };
-        delete n[groupId];
-        return n;
-      });
+      await updateDoc(groupRef, { [field]: value });
     } catch (error) {
-      console.error("Error updating group:", error);
-      setErrors((prev) => ({ ...prev, [groupId]: "Save failed." }));
+      console.error(`Error updating group ${field}:`, error);
+      alert(`Failed to update group ${field}.`);
     }
   };
 
-  // Discard changes and exit edit mode
-  const handleCancelEdit = (groupId: string) => {
-    setEditingGroups((prev) => {
-      const n = { ...prev };
-      delete n[groupId];
-      return n;
-    });
-    setErrors((prev) => ({ ...prev, [groupId]: "" })); // Clear errors
+  const handleGroupFieldBlur = () => {
+    setEditingField(null);
   };
 
   // Add a new group to Firestore
@@ -200,106 +145,87 @@ const GroupManager: React.FC<GroupManagerProps> = ({
               </tr>
             </thead>
             <tbody>
-              {groups.map((group) => {
-                const isEditing = !!editingGroups[group.id];
-                const currentData = isEditing ? editingGroups[group.id] : group;
-                const errorMsg = errors[group.id];
-                return (
-                  <tr
-                    key={group.id}
-                    className={`border-b border-gray-200 ${
-                      isEditing ? "bg-yellow-50" : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <td className="simple-table-cell p-1.5">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={currentData.name}
-                          onChange={(e) =>
-                            handleEditChange(group.id, "name", e.target.value)
-                          }
-                          className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          aria-label={`Edit name for group ${group.name}`}
-                        />
-                      ) : (
-                        <span className="px-2 py-1 block">
-                          {currentData.name}
-                        </span>
-                      )}
-                    </td>
-                    <td className="simple-table-cell p-1.5">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          value={currentData.weight}
-                          onChange={(e) =>
-                            handleEditChange(group.id, "weight", e.target.value)
-                          }
-                          min="0"
-                          step="any"
-                          className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          aria-label={`Edit weight for group ${group.name}`}
-                        />
-                      ) : (
-                        <span className="px-2 py-1 block text-right">
-                          {currentData.weight}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="simple-table-cell simple-table-cell-actions p-1.5">
-                      <div className="flex justify-end items-center gap-2">
-                        {isEditing ? (
-                          <>
-                            {" "}
-                            <button
-                              onClick={() => handleSaveEdit(group.id)}
-                              className="icon-button icon-button-save"
-                              title="Save"
-                            >
-                              <FaSave />
-                            </button>{" "}
-                            <button
-                              onClick={() => handleCancelEdit(group.id)}
-                              className="icon-button icon-button-cancel"
-                              title="Cancel"
-                            >
-                              <FaTimes />
-                            </button>{" "}
-                          </>
-                        ) : (
-                          <>
-                            {" "}
-                            <button
-                              onClick={() =>
-                                setEditingGroups({ [group.id]: group })
-                              }
-                              className="icon-button icon-button-default"
-                              title="Edit"
-                            >
-                              <FaEdit />
-                            </button>{" "}
-                            <button
-                              onClick={() =>
-                                handleDeleteGroup(group.id, group.name)
-                              }
-                              className="icon-button icon-button-danger"
-                              title="Delete"
-                            >
-                              <FaTrash />
-                            </button>{" "}
-                          </>
-                        )}
+              {groups.map((group) => (
+                <tr
+                  key={group.id}
+                  className="border-b border-gray-200 hover:bg-gray-50"
+                >
+                  <td className="simple-table-cell p-1.5">
+                    {editingField?.groupId === group.id &&
+                    editingField.field === "name" ? (
+                      <input
+                        type="text"
+                        value={group.name}
+                        onChange={(e) =>
+                          handleGroupFieldChange(
+                            group.id,
+                            "name",
+                            e.target.value
+                          )
+                        }
+                        onBlur={handleGroupFieldBlur}
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        className="cursor-pointer px-2 py-1 hover:bg-gray-100 rounded"
+                        onClick={() =>
+                          setEditingField({ groupId: group.id, field: "name" })
+                        }
+                        title="Click to edit group name"
+                      >
+                        {group.name}
                       </div>
-                      {errorMsg && (
-                        <small className="text-red-600 block mt-0.5 text-xs text-right">
-                          {errorMsg}
-                        </small>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                    )}
+                  </td>
+                  <td className="simple-table-cell p-1.5">
+                    {editingField?.groupId === group.id &&
+                    editingField.field === "weight" ? (
+                      <input
+                        type="number"
+                        value={group.weight}
+                        onChange={(e) =>
+                          handleGroupFieldChange(
+                            group.id,
+                            "weight",
+                            e.target.value === ""
+                              ? 0
+                              : parseFloat(e.target.value)
+                          )
+                        }
+                        onBlur={handleGroupFieldBlur}
+                        min="0"
+                        step="any"
+                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-sm text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        className="cursor-pointer px-2 py-1 hover:bg-gray-100 rounded text-right"
+                        onClick={() =>
+                          setEditingField({
+                            groupId: group.id,
+                            field: "weight",
+                          })
+                        }
+                        title="Click to edit group weight"
+                      >
+                        {group.weight}%
+                      </div>
+                    )}
+                  </td>
+                  <td className="simple-table-cell simple-table-cell-actions p-1.5">
+                    <button
+                      onClick={() => handleDeleteGroup(group.id, group.name)}
+                      className="icon-button icon-button-danger"
+                      title="Delete"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         ) : (

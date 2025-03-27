@@ -49,9 +49,11 @@ const CourseView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
-  const [isRenamingCourse, setIsRenamingCourse] = useState(false);
-  const [newCourseName, setNewCourseName] = useState("");
-  const [isRenamingSaving, setIsRenamingSaving] = useState(false);
+  const [isEditingCourseName, setIsEditingCourseName] = useState(false);
+
+  const handleCourseNameBlur = () => {
+    setIsEditingCourseName(false);
+  };
 
   // --- Data Fetching Effect ---
   useEffect(() => {
@@ -253,40 +255,23 @@ const CourseView: React.FC = () => {
     // No need to setLoading(false) on success, as navigation occurs.
   }, [currentUser, courseId, course, navigate, isDeletingCourse]); // Dependencies for the callback
 
-  // Add a new callback for renaming the course
-  const handleRenameCourse = useCallback(async () => {
-    if (!currentUser || !courseId || !course || isRenamingSaving) return;
-    if (!newCourseName.trim()) {
-      alert("Course name cannot be empty.");
-      return;
-    }
-
-    setIsRenamingSaving(true);
-    try {
-      const courseRef = doc(db, `users/${currentUser.uid}/courses/${courseId}`);
-      await updateDoc(courseRef, { name: newCourseName.trim() });
-      // Firestore listener will update local state automatically
-      setIsRenamingCourse(false);
-    } catch (err) {
-      console.error("Error renaming course:", err);
-      alert("Failed to rename course.");
-    } finally {
-      setIsRenamingSaving(false);
-    }
-  }, [currentUser, courseId, course, newCourseName, isRenamingSaving]);
-
-  // Start renaming - populate the input with current name
-  const startRenaming = () => {
-    if (course) {
-      setNewCourseName(course.name);
-      setIsRenamingCourse(true);
-    }
-  };
-
-  // Cancel renaming
-  const cancelRenaming = () => {
-    setIsRenamingCourse(false);
-  };
+  // Add a new callback for updating the course name
+  const handleCourseNameChange = useCallback(
+    async (newName: string) => {
+      if (!currentUser || !courseId || !course) return;
+      try {
+        const courseRef = doc(
+          db,
+          `users/${currentUser.uid}/courses/${courseId}`
+        );
+        await updateDoc(courseRef, { name: newName.trim() });
+      } catch (err) {
+        console.error("Error updating course name:", err);
+        alert("Failed to update course name.");
+      }
+    },
+    [currentUser, courseId, course]
+  );
 
   // --- Render Logic ---
   if (loading)
@@ -324,59 +309,28 @@ const CourseView: React.FC = () => {
     <div className="space-y-8">
       {/* Course Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-gray-200">
-        {isRenamingCourse ? (
-          // Rename mode
-          <div className="flex items-center gap-2 flex-grow">
-            <input
-              type="text"
-              value={newCourseName}
-              onChange={(e) => setNewCourseName(e.target.value)}
-              className="text-xl md:text-2xl font-bold text-gray-800 border border-gray-300 rounded px-2 py-1 flex-grow"
-              placeholder="Course name"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRenameCourse();
-                if (e.key === "Escape") cancelRenaming();
-              }}
-            />
-            <button
-              onClick={handleRenameCourse}
-              disabled={isRenamingSaving}
-              className="button-base button-primary button-small"
-              title="Save course name"
-            >
-              <FaSave className="-ml-0.5 mr-1 h-4 w-4" />
-              {isRenamingSaving ? "Saving..." : "Save"}
-            </button>
-            <button
-              onClick={cancelRenaming}
-              disabled={isRenamingSaving}
-              className="button-base button-secondary button-small"
-              title="Cancel"
-            >
-              <FaTimes className="-ml-0.5 mr-1 h-4 w-4" />
-              Cancel
-            </button>
-          </div>
+        {isEditingCourseName ? (
+          <input
+            type="text"
+            value={course?.name || ""}
+            onChange={(e) => handleCourseNameChange(e.target.value)}
+            onBlur={handleCourseNameBlur}
+            className="text-xl md:text-2xl font-bold text-gray-800 border border-gray-300 rounded px-2 py-1 flex-grow"
+            placeholder="Course name"
+            autoFocus
+          />
         ) : (
-          // Display mode
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 truncate">
-              {course?.name}
-            </h2>
-            <button
-              onClick={startRenaming}
-              className="text-gray-400 hover:text-gray-600"
-              title="Rename course"
-            >
-              <FaPencilAlt className="h-4 w-4" />
-            </button>
+          <div
+            className="text-xl md:text-2xl font-bold text-gray-800 cursor-pointer px-2 py-1 hover:bg-gray-100 rounded"
+            onClick={() => setIsEditingCourseName(true)}
+            title="Click to edit course name"
+          >
+            {course?.name || "Untitled Course"}
           </div>
         )}
-
         <button
           onClick={handleDeleteCourse}
-          disabled={isDeletingCourse || isRenamingCourse}
+          disabled={isDeletingCourse}
           className="button-base button-danger button-small"
         >
           <FaTrash className="-ml-0.5 mr-1 h-4 w-4" />
