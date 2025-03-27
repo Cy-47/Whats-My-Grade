@@ -49,7 +49,8 @@ export interface Assignment {
   groupId?: string | null; // Optional ID of the AssignmentGroup it belongs to
   relativeWeightInGroup?: number | null; // Optional manual weight WITHIN the group
   createdAt: Timestamp;
-  displayOrder?: number; // New field to track order
+  displayOrder?: number; // Field to track order
+  effectiveWeight?: number | null; // Calculated effective weight contribution
 }
 
 // Helper type for passing data needed for grade calculations

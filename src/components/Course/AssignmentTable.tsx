@@ -29,6 +29,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableAssignmentRow } from "./SortableAssignmentRow";
+import { calculateEffectiveWeight } from "../../utils/gradeCalculations";
 
 // Define the missing interface
 interface AssignmentTableProps {
@@ -36,61 +37,6 @@ interface AssignmentTableProps {
   assignments: Assignment[];
   groups: AssignmentGroup[];
 }
-
-// Helper function to calculate effective weight contribution
-const calculateEffectiveWeight = (
-  assignment: Assignment,
-  allAssignments: Assignment[],
-  groups: AssignmentGroup[]
-): number | null => {
-  if (assignment.isDropped) return 0; // Dropped items have 0 effective weight
-
-  if (!assignment.groupId) {
-    // Not grouped
-    return typeof assignment.weight === "number" ? assignment.weight : null;
-  }
-
-  // Grouped assignment logic
-  const group = groups.find((g) => g.id === assignment.groupId);
-  if (!group || typeof group.weight !== "number" || group.weight <= 0) return 0;
-
-  const groupAssignments = allAssignments.filter(
-    (a) => a.groupId === group.id && !a.isDropped
-  );
-  const numberOfAssignmentsInGroup = groupAssignments.length;
-  if (numberOfAssignmentsInGroup === 0) return 0;
-
-  const groupUsesManualWeight = groupAssignments.some(
-    (a) =>
-      typeof a.relativeWeightInGroup === "number" && a.relativeWeightInGroup > 0
-  );
-
-  if (groupUsesManualWeight) {
-    // Manual relative weighting
-    let totalRelativeWeightInGroup = 0;
-    groupAssignments.forEach((a) => {
-      const relWeight =
-        typeof a.relativeWeightInGroup === "number"
-          ? a.relativeWeightInGroup
-          : 0;
-      if (relWeight > 0) {
-        totalRelativeWeightInGroup += relWeight;
-      }
-    });
-    if (totalRelativeWeightInGroup === 0) return 0; // Avoid division by zero
-
-    const assignmentRelativeWeight =
-      typeof assignment.relativeWeightInGroup === "number"
-        ? assignment.relativeWeightInGroup
-        : 0;
-    return (
-      group.weight * (assignmentRelativeWeight / totalRelativeWeightInGroup)
-    );
-  } else {
-    // Equal weighting
-    return group.weight / numberOfAssignmentsInGroup;
-  }
-};
 
 const AssignmentTable: React.FC<AssignmentTableProps> = ({
   courseId,
@@ -216,23 +162,76 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     [currentUser, courseId, isAdding, orderedAssignments]
   );
 
+  // Helper to identify which assignments need weight recalculation
+  const getAffectedAssignments = (
+    assignment: Assignment,
+    updatedData: Partial<Assignment>
+  ) => {
+    // If changing group, need to update both old and new group assignments
+    if ("groupId" in updatedData) {
+      const oldGroupId = assignment.groupId;
+      const newGroupId = updatedData.groupId;
+
+      // Get assignments from both groups
+      const affectedAssignments = orderedAssignments.filter(
+        (a) =>
+          !a.isDropped &&
+          (a.id === assignment.id ||
+            a.groupId === oldGroupId ||
+            a.groupId === newGroupId)
+      );
+      return affectedAssignments;
+    }
+
+    // If changing relative weight or dropping status, update all in the same group
+    if (
+      "relativeWeightInGroup" in updatedData ||
+      "isDropped" in updatedData ||
+      "isExtraCredit" in updatedData
+    ) {
+      return orderedAssignments.filter(
+        (a) => a.groupId === assignment.groupId && !a.isDropped
+      );
+    }
+
+    // If changing direct weight, only affect this assignment
+    if ("weight" in updatedData) {
+      return [assignment];
+    }
+
+    // Default: return this assignment only
+    return [assignment];
+  };
+
   // Basic implementation of saving edits (called from AssignmentRow)
-  // Consider debouncing or batching updates for better performance
   const handleSaveAssignment = async (
     assignmentId: string,
     updatedData: Partial<Assignment>
   ) => {
     if (!currentUser || !courseId) return;
     try {
+      // Get the assignment being updated
+      const assignment = orderedAssignments.find((a) => a.id === assignmentId);
+      if (!assignment) return;
+
+      // Get assignments that may need weight recalculation
+      const affectedAssignments = getAffectedAssignments(
+        assignment,
+        updatedData
+      );
+
+      // First update the current assignment
       const assignmentRef = doc(
         db,
         `users/${currentUser.uid}/courses/${courseId}/assignments/${assignmentId}`
       );
       await updateDoc(assignmentRef, updatedData);
+
+      // We no longer update effectiveWeight in the database
+      // If weights were previously being recalculated, we just don't do that anymore
     } catch (error) {
       console.error("Error updating assignment:", error);
       alert("Failed to save changes.");
-      // TODO: Implement rollback or retry logic if needed
     }
   };
 
@@ -246,6 +245,8 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     });
 
     return sortedAssignments.map((assignment) => {
+      // Note: effectiveWeight is calculated on client-side only and never stored in the database
+      // This ensures weights are always current with the latest data
       const effectiveWeight = calculateEffectiveWeight(
         assignment,
         orderedAssignments,

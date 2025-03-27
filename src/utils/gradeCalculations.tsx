@@ -17,6 +17,88 @@ const safePercentage = (
   return score / total;
 };
 
+// Validate if a weight is a positive number
+const isValidWeight = (weight: any): boolean => {
+  return typeof weight === "number" && weight > 0;
+};
+
+// Export function to calculate an assignment's effective weight contribution
+export const calculateEffectiveWeight = (
+  assignment: Assignment,
+  allAssignments: Assignment[],
+  groups: AssignmentGroup[]
+): number | null => {
+  if (assignment.isDropped) return 0; // Dropped items have 0 effective weight
+
+  if (!assignment.groupId) {
+    // Not grouped
+    return typeof assignment.weight === "number" ? assignment.weight : null;
+  }
+
+  // Grouped assignment logic
+  const group = groups.find((g) => g.id === assignment.groupId);
+  if (!group || typeof group.weight !== "number" || group.weight <= 0) return 0;
+
+  const groupAssignments = allAssignments.filter(
+    (a) => a.groupId === group.id && !a.isDropped
+  );
+  const numberOfAssignmentsInGroup = groupAssignments.length;
+  if (numberOfAssignmentsInGroup === 0) return 0;
+
+  const groupUsesManualWeight = groupAssignments.some(
+    (a) =>
+      typeof a.relativeWeightInGroup === "number" && a.relativeWeightInGroup > 0
+  );
+
+  if (groupUsesManualWeight) {
+    // Manual relative weighting
+    let totalRelativeWeightInGroup = 0;
+    groupAssignments.forEach((a) => {
+      const relWeight =
+        typeof a.relativeWeightInGroup === "number"
+          ? a.relativeWeightInGroup
+          : 0;
+      if (relWeight > 0) {
+        totalRelativeWeightInGroup += relWeight;
+      }
+    });
+    if (totalRelativeWeightInGroup === 0) return 0; // Avoid division by zero
+
+    const assignmentRelativeWeight =
+      typeof assignment.relativeWeightInGroup === "number"
+        ? assignment.relativeWeightInGroup
+        : 0;
+    return (
+      group.weight * (assignmentRelativeWeight / totalRelativeWeightInGroup)
+    );
+  } else {
+    // Equal weighting
+    return group.weight / numberOfAssignmentsInGroup;
+  }
+};
+
+// Calculate an assignment's contribution to the overall grade
+const calculateAssignmentContribution = (
+  assignment: Assignment,
+  weight: number
+): { pointsObtained: number; pointsTotal: number } => {
+  const percentage = safePercentage(assignment.score, assignment.totalScore);
+
+  // Always use the calculated weight passed to this function,
+  // not any stored effectiveWeight
+  const effectiveWeight = weight;
+
+  if (percentage === null || !isValidWeight(effectiveWeight)) {
+    return { pointsObtained: 0, pointsTotal: 0 };
+  }
+
+  return {
+    pointsObtained: percentage * effectiveWeight,
+    // Only count non-extra credit assignments towards effective weight
+    pointsTotal: assignment.isExtraCredit ? 0 : effectiveWeight,
+  };
+};
+
 // Calculates the overall course grade percentage
 export const calculateOverallGrade = (
   allAssignments: Assignment[],
@@ -25,128 +107,32 @@ export const calculateOverallGrade = (
   // Filter out assignments marked as dropped
   const assignments = allAssignments.filter((a) => !a.isDropped);
 
-  let totalWeightedScore = 0; // Sum of (item percentage * item effective weight)
-  let totalEffectiveWeight = 0; // Sum of effective weights of all graded items
+  let totalPointsObtained = 0;
+  let totalPointsTotal = 0;
 
-  // 1. Process assignments NOT in any group
-  const ungroupedAssignments = assignments.filter((a) => !a.groupId);
-  ungroupedAssignments.forEach((a) => {
-    const percentage = safePercentage(a.score, a.totalScore);
-    // Use assignment's direct weight, ensure it's a valid positive number
-    const weight = typeof a.weight === "number" && a.weight > 0 ? a.weight : 0;
-    if (percentage !== null && weight > 0) {
-      totalWeightedScore += percentage * weight;
-      // Only count non-extra credit assignments towards effective weight
-      if (!a.isExtraCredit) {
-        totalEffectiveWeight += weight;
-      }
-    }
-    // Ungraded assignments or those with zero/invalid weight don't contribute yet
-  });
+  // Process each assignment with dynamic weight calculation
+  // Note: We always calculate weights dynamically rather than using stored values
+  // to ensure the grade calculation is accurate with the latest assignment data
+  assignments.forEach((assignment) => {
+    // Always calculate the weight, never use stored effectiveWeight
+    const weight =
+      calculateEffectiveWeight(assignment, allAssignments, groups) || 0;
 
-  // 2. Process assignments within groups
-  groups.forEach((group) => {
-    const groupAssignments = assignments.filter((a) => a.groupId === group.id);
-    // Ensure group weight is a valid positive number
-    const groupWeight =
-      typeof group.weight === "number" && group.weight > 0 ? group.weight : 0;
-
-    // Skip empty groups or groups with no weight assigned
-    if (groupAssignments.length === 0 || groupWeight <= 0) {
-      return;
-    }
-
-    // --- Manual Weighting within Group ---
-    // Check if any assignment has manual relative weight (for non-extra credit)
-    const usesManualWeight = groupAssignments.some(
-      (a) =>
-        typeof a.relativeWeightInGroup === "number" &&
-        a.relativeWeightInGroup > 0
+    const { pointsObtained, pointsTotal } = calculateAssignmentContribution(
+      assignment,
+      weight
     );
-    if (usesManualWeight) {
-      let groupManualWeightTotal = 0;
-      let groupWeightedScoreSumManual = 0;
-      // Count only non-extra credit assignments for normalization
-      groupAssignments.forEach((a) => {
-        const relWeight =
-          typeof a.relativeWeightInGroup === "number"
-            ? a.relativeWeightInGroup
-            : 0;
-        if (relWeight > 0 && !a.isExtraCredit) {
-          groupManualWeightTotal += relWeight;
-        }
-      });
-      if (groupManualWeightTotal > 0) {
-        groupAssignments.forEach((a) => {
-          const percentage = safePercentage(a.score, a.totalScore);
-          const relativeWeight =
-            typeof a.relativeWeightInGroup === "number"
-              ? a.relativeWeightInGroup
-              : 0;
-          if (percentage !== null && relativeWeight > 0) {
-            if (!a.isExtraCredit) {
-              groupWeightedScoreSumManual +=
-                percentage * (relativeWeight / groupManualWeightTotal);
-            } else {
-              // Extra credit: add its contribution directly without counting group weight
-              totalWeightedScore +=
-                percentage *
-                (relativeWeight / groupManualWeightTotal) *
-                groupWeight;
-            }
-          }
-        });
-        if (groupWeightedScoreSumManual) {
-          totalWeightedScore += groupWeightedScoreSumManual * groupWeight;
-          totalEffectiveWeight += groupWeight;
-        }
-      }
-    } else {
-      // --- Equal Weighting within Group (Based on points) ---
-      let groupScoreSum = 0;
-      let groupTotalPossible = 0;
-      // Process regular (non-extra credit) assignments
-      groupAssignments.forEach((a) => {
-        if (
-          !a.isExtraCredit &&
-          typeof a.score === "number" &&
-          typeof a.totalScore === "number" &&
-          a.totalScore > 0
-        ) {
-          groupScoreSum += a.score;
-          groupTotalPossible += a.totalScore;
-        }
-      });
-      if (groupTotalPossible > 0) {
-        const groupScore = groupScoreSum / groupTotalPossible;
-        totalWeightedScore += groupScore * groupWeight;
-        totalEffectiveWeight += groupWeight;
-      }
-      // Process extra credit assignments separately
-      groupAssignments.forEach((a) => {
-        if (
-          a.isExtraCredit &&
-          typeof a.score === "number" &&
-          typeof a.totalScore === "number" &&
-          a.totalScore > 0
-        ) {
-          const percentage = a.score / a.totalScore;
-          const bonusWeight =
-            typeof a.relativeWeightInGroup === "number"
-              ? a.relativeWeightInGroup
-              : 0;
-          totalWeightedScore += percentage * bonusWeight;
-        }
-      });
-    }
+
+    totalPointsObtained += pointsObtained;
+    totalPointsTotal += pointsTotal;
   });
 
-  // 3. Calculate final percentage
-  if (totalEffectiveWeight === 0) {
+  // Calculate final percentage
+  if (totalPointsTotal === 0) {
     return null; // No graded, weighted items yet
   }
 
-  const finalPercentage = (totalWeightedScore / totalEffectiveWeight) * 100;
+  const finalPercentage = (totalPointsObtained / totalPointsTotal) * 100;
   // Ensure grade isn't negative due to weird inputs, allow extra credit (>100)
   return Math.max(0, finalPercentage);
 };
