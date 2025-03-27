@@ -221,49 +221,41 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
 
   // Conditional classes based on state
   const isGrouped = !!localAssignment.groupId;
-  const isDroppedClass = localAssignment.isDropped
-    ? "opacity-60 line-through bg-gray-50"
-    : ""; // Style for dropped rows
 
+  // Modified to return cell contents without the tr wrapper
   return (
-    <tr
-      className={`hover:bg-gray-50 transition-colors duration-50 ${isDroppedClass}`}
-    >
+    <>
       {/* Name Input */}
       <td className="assignment-cell">
-        {" "}
         <input
           ref={nameInputRef}
           {...getInputProps("name", "text", "font-medium")}
           placeholder="Assignment Name"
           aria-label="Assignment Name"
-        />{" "}
+        />
       </td>
       {/* Score Input */}
       <td className="assignment-cell assignment-cell-center">
-        {" "}
         <input
           {...getInputProps("score", "number", "assignment-input-center")}
           placeholder="-"
           step="any"
           min="0"
           aria-label="Score"
-        />{" "}
+        />
       </td>
       {/* Total Score Input */}
       <td className="assignment-cell assignment-cell-center">
-        {" "}
         <input
           {...getInputProps("totalScore", "number", "assignment-input-center")}
           placeholder="e.g. 100"
           step="any"
           min="0"
           aria-label="Total Score"
-        />{" "}
+        />
       </td>
       {/* Weight (%) Display/Input */}
       <td className="assignment-cell assignment-cell-center">
-        {" "}
         {isGrouped ? (
           <span className="calculated-weight-display">
             {effectiveWeight !== null
@@ -280,11 +272,10 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
             max="100"
             aria-label="Direct weight"
           />
-        )}{" "}
+        )}
       </td>
       {/* Group Select Dropdown */}
       <td className="assignment-cell">
-        {" "}
         <select
           {...getInputProps("groupId", "select")}
           value={localAssignment.groupId || ""}
@@ -292,18 +283,16 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           aria-label="Assignment Group"
           title="Assign to a group..."
         >
-          {" "}
-          <option value="">-- No Group --</option>{" "}
+          <option value="">-- No Group --</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>
               {g.name} ({g.weight}%)
             </option>
-          ))}{" "}
-        </select>{" "}
+          ))}
+        </select>
       </td>
       {/* Weight in Group Input */}
       <td className="assignment-cell assignment-cell-center">
-        {" "}
         <input
           {...getInputProps(
             "relativeWeightInGroup",
@@ -322,11 +311,10 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           step="any"
           min="0"
           aria-label="Relative weight"
-        />{" "}
+        />
       </td>
       {/* Drop Checkbox */}
       <td className="assignment-cell assignment-cell-center">
-        {" "}
         <input
           type="checkbox"
           name="isDropped"
@@ -336,7 +324,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           className="assignment-checkbox"
           title="Drop assignment"
           aria-label="Drop assignment"
-        />{" "}
+        />
       </td>
       {/* Extra Credit Checkbox */}
       <td className="assignment-cell assignment-cell-center">
@@ -353,7 +341,6 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
       </td>
       {/* Actions (Delete) Button */}
       <td className="assignment-cell-last assignment-cell-center">
-        {" "}
         <button
           onClick={handleDelete}
           disabled={isDeleting}
@@ -363,8 +350,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           title="Delete assignment"
           aria-label="Delete assignment"
         >
-          {" "}
-          <span className="sr-only">Delete</span>{" "}
+          <span className="sr-only">Delete</span>
           {isDeleting ? (
             <svg
               className="animate-spin h-4 w-4"
@@ -372,7 +358,6 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
               fill="none"
               viewBox="0 0 24 24"
             >
-              {" "}
               <circle
                 className="opacity-25"
                 cx="12"
@@ -380,19 +365,19 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
                 r="10"
                 stroke="currentColor"
                 strokeWidth="4"
-              ></circle>{" "}
+              ></circle>
               <path
                 className="opacity-75"
                 fill="currentColor"
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>{" "}
+              ></path>
             </svg>
           ) : (
             <FaTrash className="h-4 w-4" />
-          )}{" "}
-        </button>{" "}
+          )}
+        </button>
       </td>
-    </tr>
+    </>
   );
 };
 export default AssignmentRow;

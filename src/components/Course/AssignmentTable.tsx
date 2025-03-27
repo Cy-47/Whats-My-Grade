@@ -6,13 +6,31 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { Assignment, AssignmentGroup } from "../../types";
 import AssignmentRow from "./AssignmentRow";
 import { FaPlus } from "react-icons/fa";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableAssignmentRow } from "./SortableAssignmentRow";
 
+// Define the missing interface
 interface AssignmentTableProps {
   courseId: string;
   assignments: Assignment[];
@@ -81,6 +99,69 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [orderedAssignments, setOrderedAssignments] =
+    useState<Assignment[]>(assignments);
+
+  // Effect to update local state when assignments prop changes
+  React.useEffect(() => {
+    setOrderedAssignments(assignments);
+  }, [assignments]);
+
+  // Setup sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end event - now with server sync
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      // Update local state for immediate UI feedback
+      let newOrderedItems: Assignment[] = [];
+
+      setOrderedAssignments((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        newOrderedItems = arrayMove(items, oldIndex, newIndex);
+        return newOrderedItems;
+      });
+
+      // Now sync to server
+      if (currentUser && courseId) {
+        setIsDragging(true);
+        try {
+          // Create a batch operation to update multiple documents efficiently
+          const batch = writeBatch(db);
+
+          // Assign position values (we use multiples of 10 to allow for easy insertion later)
+          newOrderedItems.forEach((assignment, index) => {
+            const assignmentRef = doc(
+              db,
+              `users/${currentUser.uid}/courses/${courseId}/assignments/${assignment.id}`
+            );
+            // Use displayOrder field to track the order
+            batch.update(assignmentRef, { displayOrder: (index + 1) * 10 });
+          });
+
+          // Commit all updates in a single batch
+          await batch.commit();
+        } catch (error) {
+          console.error("Failed to update assignment order:", error);
+          // Optionally, revert to original order on error
+          setOrderedAssignments(assignments);
+          alert("Failed to save the new order. Please try again.");
+        } finally {
+          setIsDragging(false);
+        }
+      }
+    }
+  };
 
   // Callback to add a new assignment
   const handleAddAssignment = useCallback(
@@ -88,6 +169,13 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
       if (!currentUser || !courseId || isAdding) return;
       setIsAdding(true);
       try {
+        // Get the highest display order for proper positioning of new item
+        const highestOrder =
+          orderedAssignments.length > 0
+            ? Math.max(...orderedAssignments.map((a) => a.displayOrder || 0)) +
+              10
+            : 10;
+
         const assignmentsCol = collection(
           db,
           `users/${currentUser.uid}/courses/${courseId}/assignments`
@@ -105,6 +193,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
           groupId: null,
           relativeWeightInGroup: null,
           createdAt: serverTimestamp(),
+          displayOrder: highestOrder, // Add display order for new assignments
         });
 
         if (focusNew) {
@@ -124,7 +213,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
         setIsAdding(false);
       }
     },
-    [currentUser, courseId, isAdding]
+    [currentUser, courseId, isAdding, orderedAssignments]
   );
 
   // Basic implementation of saving edits (called from AssignmentRow)
@@ -147,17 +236,24 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     }
   };
 
-  // Memoize calculations for performance
+  // Memoize calculations for performance with sorted assignments
   const assignmentsWithCalculatedData = useMemo(() => {
-    return assignments.map((assignment) => {
+    // Sort assignments by displayOrder if available
+    const sortedAssignments = [...orderedAssignments].sort((a, b) => {
+      const orderA = a.displayOrder || 0;
+      const orderB = b.displayOrder || 0;
+      return orderA - orderB;
+    });
+
+    return sortedAssignments.map((assignment) => {
       const effectiveWeight = calculateEffectiveWeight(
         assignment,
-        assignments,
+        orderedAssignments,
         groups
       );
       let groupUsesManualWeight = false;
       if (assignment.groupId) {
-        groupUsesManualWeight = assignments
+        groupUsesManualWeight = orderedAssignments
           .filter((a) => a.groupId === assignment.groupId && !a.isDropped)
           .some(
             (a) =>
@@ -167,16 +263,23 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
       }
       return { ...assignment, effectiveWeight, groupUsesManualWeight };
     });
-  }, [assignments, groups]); // Recalculate only when inputs change
+  }, [orderedAssignments, groups]); // Recalculate only when inputs change
 
   return (
     <div className="overflow-x-hidden w-full bg-white shadow border border-gray-200 rounded-lg">
+      {/* Show a loading indicator during drag operations */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+          <div className="text-sm text-gray-500">Saving order...</div>
+        </div>
+      )}
+
       <div className="overflow-x-auto w-full">
         <table className="divide-y min-w-full divide-gray-200 text-sm ">
           <thead className="bg-gray-50 sticky top-0 z-10">
-            {" "}
-            {/* Sticky header */}
             <tr>
+              {/* Add column for drag handle */}
+              <th scope="col" className="w-5 px-1" title="Drag to reorder"></th>
               <th
                 scope="col"
                 className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
@@ -240,28 +343,43 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {assignmentsWithCalculatedData.length > 0 ? (
-              assignmentsWithCalculatedData.map((assignmentData, index) => (
-                <AssignmentRow
-                  key={assignmentData.id}
-                  // Pass original assignment data to row for local state management
-                  assignment={
-                    assignments.find((a) => a.id === assignmentData.id)!
-                  }
-                  rowIndex={index}
-                  totalRows={assignmentsWithCalculatedData.length}
-                  groups={groups}
-                  onSave={handleSaveAssignment}
-                  courseId={courseId}
-                  onAddRowBelow={() => handleAddAssignment(true)}
-                  // Pass calculated data needed for display
-                  effectiveWeight={assignmentData.effectiveWeight}
-                  groupUsesManualWeight={assignmentData.groupUsesManualWeight}
-                />
-              ))
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={assignmentsWithCalculatedData.map((item) => item.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {assignmentsWithCalculatedData.map(
+                    (assignmentData, index) => (
+                      <SortableAssignmentRow
+                        key={assignmentData.id}
+                        id={assignmentData.id}
+                        rowProps={{
+                          assignment: assignments.find(
+                            (a: Assignment) => a.id === assignmentData.id
+                          )!,
+                          rowIndex: index,
+                          totalRows: assignmentsWithCalculatedData.length,
+                          groups: groups,
+                          onSave: handleSaveAssignment,
+                          courseId: courseId,
+                          onAddRowBelow: () => handleAddAssignment(true),
+                          effectiveWeight: assignmentData.effectiveWeight,
+                          groupUsesManualWeight:
+                            assignmentData.groupUsesManualWeight,
+                        }}
+                      />
+                    )
+                  )}
+                </SortableContext>
+              </DndContext>
             ) : (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={10}
                   className="px-6 py-10 text-center text-sm text-gray-500 italic"
                 >
                   No assignments added yet. Click button below to add one.
