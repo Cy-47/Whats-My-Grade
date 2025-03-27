@@ -1,7 +1,13 @@
 import React, { ReactNode, useState } from "react";
 import CourseList from "../Sidebar/CourseList";
 import { useAuth } from "../../contexts/AuthContext";
-import { FaSignOutAlt, FaBars, FaTimes } from "react-icons/fa";
+import {
+  FaSignOutAlt,
+  FaBars,
+  FaTimes,
+  FaChevronLeft,
+  FaChevronRight,
+} from "react-icons/fa";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -9,44 +15,48 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { currentUser, signOut } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-gray-50 text-gray-900 relative">
       {/* Mobile header with toggle */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 w-full flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
-        <button onClick={() => setSidebarOpen(true)} aria-label="Open courses">
+      <header className="sm:hidden fixed top-0 left-0 right-0 z-40 w-full flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open courses"
+          className="p-2"
+        >
           <FaBars className="text-xl" />
         </button>
-        {/* Removed Courses text */}
         <div />
         {currentUser && (
-          <button onClick={signOut} aria-label="Sign Out">
+          <button onClick={signOut} aria-label="Sign Out" className="p-2">
             <FaSignOutAlt className="text-xl" />
           </button>
         )}
       </header>
       {/* Add padding for fixed header on mobile */}
-      <div className="md:hidden h-16"></div>
+      <div className="sm:hidden h-16"></div>
 
       {/* Mobile bottom sheet for courses */}
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black opacity-50"
+            className="fixed inset-0 z-50 bg-black opacity-50 sm:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
-          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-white p-4 shadow-lg rounded-t-lg">
-            <div className="flex items-center justify-between mb-4">
+          <div className="fixed bottom-0 left-0 right-0 z-50 w-full bg-white p-5 shadow-lg rounded-t-lg sm:hidden">
+            <div className="flex items-center justify-between mb-5">
               <h4 className="text-lg font-semibold">Courses</h4>
               <button
                 onClick={() => setSidebarOpen(false)}
                 aria-label="Close courses"
+                className="p-2"
               >
                 <FaTimes className="text-xl" />
               </button>
             </div>
-            <div className="overflow-y-auto max-h-60">
+            <div className="overflow-y-auto max-h-60 px-2">
               <CourseList />
             </div>
           </div>
@@ -54,36 +64,55 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       )}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-shrink-0 w-60 xl:w-64 bg-white border-r border-gray-200 p-4 flex flex-col shadow-sm ">
-        <div className="mb-4 pb-3 border-b border-gray-200">
-          <h4 className="text-lg font-semibold text-gray-800">Courses</h4>
-          {currentUser && (
-            <div className="mt-1.5 text-xs text-gray-500 flex justify-between items-center gap-1">
-              <span
-                className="truncate flex-grow mr-2"
-                title={currentUser.displayName || currentUser.email || "User"}
-              >
-                {currentUser.displayName || currentUser.email || "User"}
-              </span>
-              <button
-                onClick={signOut}
-                className="flex-shrink-0 p-1 text-gray-500 hover:text-red-600 rounded hover:bg-red-50 transition focus:outline-none focus:ring-1 focus:ring-red-400"
-                title="Sign Out"
-              >
-                <FaSignOutAlt className="h-4 w-4" />
-                <span className="sr-only">Sign Out</span>
-              </button>
-            </div>
-          )}
+      <div
+        className={`hidden sm:flex flex-col transition-all duration-300 ease-in-out 
+          ${sidebarOpen ? "w-64" : "w-16"} 
+          h-screen bg-white border-r border-gray-200 shadow-sm`}
+      >
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          {sidebarOpen && <h2 className="text-xl font-bold">Courses</h2>}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100 ${
+              !sidebarOpen ? "mx-auto" : ""
+            }`}
+            aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {sidebarOpen ? <FaChevronLeft /> : <FaChevronRight />}
+          </button>
         </div>
-        <div className="flex-grow overflow-y-auto">
+        <div
+          className={`flex-grow overflow-y-auto ${
+            !sidebarOpen ? "hidden" : "px-3 py-4"
+          }`}
+        >
           <CourseList />
         </div>
-      </aside>
+        {currentUser && !sidebarOpen && (
+          <button
+            onClick={signOut}
+            className="mx-auto my-5 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md"
+            aria-label="Sign Out"
+          >
+            <FaSignOutAlt />
+          </button>
+        )}
+        {currentUser && sidebarOpen && (
+          <button
+            onClick={signOut}
+            className="flex items-center gap-2 p-4 my-2 mx-3 text-gray-500 hover:text-gray-700 border-t border-gray-200 hover:bg-gray-100 rounded-md"
+          >
+            <FaSignOutAlt />
+            <span>Sign Out</span>
+          </button>
+        )}
+      </div>
 
       {/* Main content */}
-      <main className="flex-grow p-6 overflow-auto">
-        <div className="max-w-6xl mx-auto">{children}</div>
+      <main
+        className={`flex-grow transition-all duration-300 ease-in-out overflow-auto p-6 sm:p-8`}
+      >
+        {children}
       </main>
     </div>
   );
