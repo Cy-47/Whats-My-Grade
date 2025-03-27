@@ -1,11 +1,8 @@
+// tsconfig.json
 {
   "compilerOptions": {
-    "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "target": "es5", // Or newer
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -18,9 +15,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    // --- Ensure this line is present and correct ---
     "jsx": "react-jsx"
+    // --- Or alternatively: "jsx": "react" ---
   },
   "include": [
-    "src"
+    "src" // Make sure 'src' directory is included
   ]
 }

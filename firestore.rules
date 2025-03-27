@@ -1,0 +1,24 @@
+// firestore.rules
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User document structure: /users/{userId}/courses/{courseId}
+    // Subcollections: /assignments/{assignmentId}, /assignmentGroups/{groupId}
+
+    // Match any document in the 'users' collection and ANY subcollection below it
+    match /users/{userId}/{document=**} {
+      // Allow read, write, delete operations IF:
+      // 1. The request is authenticated (request.auth is not null)
+      // 2. The authenticated user's UID matches the {userId} segment in the path
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Add rules for other collections if needed (e.g., public config)
+    // match /publicConfig/{docId} {
+    //   allow read: if true; // Anyone can read
+    //   allow write: if false; // No client writes
+    // }
+  }
+}

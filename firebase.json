@@ -1,0 +1,18 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+    // "indexes": "firestore.indexes.json" /* Optional: Firestore will prompt if indexes are needed */
+  },
+  "hosting": {
+    "site": "whats-my-grade",
+    "public": "build" /* Point to the production build directory */,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html" /* For single-page app routing */
+      }
+    ]
+  }
+  // Add "functions" section here if you implement backend functions (e.g., for deleting subcollections)
+}
