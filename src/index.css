@@ -78,4 +78,62 @@ input[type="number"] {
   .simple-table-header {
     @apply border border-gray-200 px-3 py-2 text-left font-medium text-gray-600 bg-gray-50;
   }
+
+  /* --- Enhanced Table Styles --- */
+  /* Table container */
+  .table-container {
+    @apply overflow-x-auto w-full bg-white shadow-lg border border-gray-300 rounded-lg;
+  }
+
+  /* Table header */
+  .table-header {
+    @apply bg-gray-100 sticky top-0 z-10 text-xs font-semibold text-gray-600 uppercase tracking-wide;
+  }
+
+  /* Table header cells */
+  .table-header-cell {
+    @apply px-4 py-3 text-left whitespace-nowrap;
+  }
+  .table-header-cell-center {
+    @apply text-center;
+  }
+
+  /* Table body */
+  .table-body {
+    @apply bg-white divide-y divide-gray-200;
+  }
+
+  /* Table rows */
+  .table-row {
+    @apply hover:bg-gray-50 transition-colors duration-150;
+  }
+  .table-row-dragging {
+    @apply bg-blue-50;
+  }
+
+  /* Table cells */
+  .table-cell {
+    @apply px-4 py-3 align-middle border-r border-gray-200 text-left;
+  }
+  .table-cell-center {
+    @apply text-center;
+  }
+  .table-cell-actions {
+    @apply text-center whitespace-nowrap;
+  }
+
+  /* Add button */
+  .add-button {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition;
+  }
+
+  /* Drag handle */
+  .drag-handle {
+    @apply flex items-center justify-center h-full cursor-grab text-gray-400 hover:text-gray-600;
+  }
+
+  /* Empty state */
+  .empty-state {
+    @apply px-6 py-10 text-center text-sm text-gray-500 italic;
+  }
 }

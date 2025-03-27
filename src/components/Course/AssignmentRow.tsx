@@ -230,12 +230,13 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
   return (
     <>
       {/* Name Input */}
-      <td className="px-3 py-1.5 align-middle border-r border-gray-300">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-left">
         <input
           ref={nameInputRef}
-          {...getInputProps("name", "text", "font-medium")}
+          {...getInputProps("name", "text")}
           placeholder="Assignment Name"
           aria-label="Assignment Name"
+          className="w-full text-sm bg-transparent border-none focus:outline-none focus:ring-1 focus:ring-blue-400 focus:bg-blue-50 disabled:opacity-50"
         />
       </td>
       {/* Score Input */}

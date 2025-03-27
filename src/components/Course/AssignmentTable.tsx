@@ -267,82 +267,64 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
   }, [orderedAssignments, groups]); // Recalculate only when inputs change
 
   return (
-    <div className="overflow-x-hidden w-full bg-white shadow border border-gray-200 rounded-lg">
-      {/* Show a loading indicator during drag operations */}
+    <div className="table-container">
       {isDragging && (
         <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
           <div className="text-sm text-gray-500">Saving order...</div>
         </div>
       )}
 
-      <div className="overflow-x-auto w-full">
-        <table className="divide-y min-w-full divide-gray-200 text-sm ">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="table-header">
             <tr>
-              {/* Add column for drag handle */}
               <th scope="col" className="w-5 px-1" title="Drag to reorder"></th>
-              <th
-                scope="col"
-                className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-20"
-              >
+              <th scope="col" className="table-header-cell">
                 Name
               </th>
-              <th
-                scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
-              >
+              <th scope="col" className="table-header-cell-center">
                 Score
               </th>
-              <th
-                scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap"
-              >
+              <th scope="col" className="table-header-cell-center">
                 Out of
               </th>
               <th
                 scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap"
+                className="table-header-cell-center"
                 title="Assignment's contribution to the final course grade."
               >
                 Weight
               </th>
-              <th
-                scope="col"
-                className="px-3 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40 whitespace-nowrap text-center"
-              >
+              <th scope="col" className="table-header-cell-center">
                 Group
               </th>
               <th
                 scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-28 whitespace-nowrap"
+                className="table-header-cell-center"
                 title="Weight relative to others in the same group (if manual weighting used)."
               >
                 Weight in Group
               </th>
-              <th
-                scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
-              >
+              <th scope="col" className="table-header-cell-center">
                 Drop
               </th>
-              {/* New Extra Credit header */}
               <th
                 scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
+                className="table-header-cell-center"
                 title="Extra Credit"
               >
                 Extra Credit
               </th>
               <th
                 scope="col"
-                className="px-3 py-2.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16 whitespace-nowrap"
+                className="table-header-cell-center"
                 title="Actions"
               >
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="table-body">
             {assignmentsWithCalculatedData.length > 0 ? (
               <DndContext
                 sensors={sensors}
@@ -355,12 +337,9 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
                 >
                   {assignmentsWithCalculatedData.map(
                     (assignmentData, index) => {
-                      // Find the matching assignment and only render if it exists
                       const matchingAssignment = assignments.find(
                         (a) => a.id === assignmentData.id
                       );
-
-                      // Skip rendering if no matching assignment found
                       if (!matchingAssignment) return null;
 
                       return (
@@ -387,10 +366,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
               </DndContext>
             ) : (
               <tr>
-                <td
-                  colSpan={10}
-                  className="px-6 py-10 text-center text-sm text-gray-500 italic"
-                >
+                <td colSpan={10} className="empty-state">
                   No assignments added yet. Click button below to add one.
                 </td>
               </tr>
@@ -398,12 +374,11 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
           </tbody>
         </table>
       </div>
-      {/* Add Button - Placed after the table for better flow */}
       <div className="px-4 py-3 text-left bg-gray-50 border-t border-gray-200 rounded-b-lg">
         <button
           onClick={() => handleAddAssignment(true)}
           disabled={isAdding}
-          className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition"
+          className="add-button"
         >
           <FaPlus className="-ml-0.5 mr-1.5 h-4 w-4" />
           {isAdding ? "Adding..." : "Add Assignment"}

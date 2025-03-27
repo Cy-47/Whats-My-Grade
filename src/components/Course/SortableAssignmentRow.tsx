@@ -52,19 +52,19 @@ export function SortableAssignmentRow({ id, rowProps }: SortableRowProps) {
     <tr
       ref={setNodeRef}
       style={style}
-      className={`hover:bg-gray-50 transition-colors duration-150 ${isDroppedClass} ${
-        isDragging ? "bg-blue-50" : ""
+      className={`table-row ${isDroppedClass} ${
+        isDragging ? "table-row-dragging" : ""
       }`}
     >
       {/* Add a drag handle before the first cell */}
-      <td className="w-5 px-1 border-r border-gray-200">
+      <td className="table-cell w-5">
         <div
           {...attributes}
           {...listeners}
-          className="flex items-center justify-center h-full cursor-grab"
+          className="drag-handle"
           title="Drag to reorder"
         >
-          <FaGripVertical className="text-gray-400 h-4 w-4" />
+          <FaGripVertical className="h-4 w-4" />
         </div>
       </td>
 
