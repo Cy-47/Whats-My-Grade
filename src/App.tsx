@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { JSX } from "react";
+import React, { JSX, Component, ReactNode } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,45 +8,65 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./components/Auth/Login";
+import SignUp from "./components/Auth/SignUp";
+import ForgotPassword from "./components/Auth/ForgotPassword";
 import MainLayout from "./components/Layout/MainLayout";
 import CourseView from "./components/Course/CourseView";
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/courses/:courseId"
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <CourseView />
-                </MainLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainLayout>
-                  <SelectCourseMessage />
-                </MainLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <ErrorBoundary>
+        <Router>
+          <Routes>
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                <PublicRoute>
+                  <SignUp />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <CourseView />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <SelectCourseMessage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ErrorBoundary>
     </AuthProvider>
   );
 }
@@ -70,5 +90,47 @@ const SelectCourseMessage: React.FC = () => (
     </p>
   </div>
 );
+
+// Custom ErrorBoundary class component
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: string | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error: error.message };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Unhandled error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex justify-center items-center min-h-screen bg-gray-100">
+          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">
+              An Error Occurred
+            </h1>
+            <p className="text-gray-700 mb-4">{this.state.error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default App;

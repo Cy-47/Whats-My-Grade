@@ -6,7 +6,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Assignment, AssignmentGroup } from "../../types";
 import { FaTrash } from "react-icons/fa";
 
-// Throttle function to limit frequency of Firestore writes on blur
+// Utility: Throttle function to limit frequency of Firestore writes
 function throttle<T extends (...args: any[]) => void>(
   func: T,
   limit: number
@@ -16,22 +16,22 @@ function throttle<T extends (...args: any[]) => void>(
     if (!inThrottle) {
       inThrottle = true;
       setTimeout(() => (inThrottle = false), limit);
-      func.apply(this, args); // Call the function
+      func.apply(this, args);
     }
   };
 }
 
 // Props definition for the AssignmentRow component
 interface AssignmentRowProps {
-  assignment: Assignment; // The core data for this row
+  assignment: Assignment;
   rowIndex: number;
   totalRows: number;
-  groups: AssignmentGroup[]; // List of available groups for the dropdown
-  onSave: (assignmentId: string, updatedData: Partial<Assignment>) => void; // Callback to save changes
+  groups: AssignmentGroup[];
+  onSave: (assignmentId: string, updatedData: Partial<Assignment>) => void;
   courseId: string;
-  onAddRowBelow: () => void; // Callback to trigger adding a new row
-  groupUsesManualWeight: boolean; // Flag indicating weighting type for the group (if any)
-  effectiveWeight: number | null; // Calculated effective weight contribution
+  onAddRowBelow: () => void;
+  groupUsesManualWeight: boolean;
+  effectiveWeight: number | null;
 }
 
 const AssignmentRow: React.FC<AssignmentRowProps> = ({
@@ -46,24 +46,23 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
   effectiveWeight,
 }) => {
   const { currentUser } = useAuth();
-  // Local state to manage edits within the row, initialized from props
+
+  // --- State Management ---
   const [localAssignment, setLocalAssignment] =
     useState<Assignment>(assignment);
-  const [isDeleting, setIsDeleting] = useState(false); // State for delete operation visual feedback
-  const nameInputRef = useRef<HTMLInputElement>(null); // Ref for potential focus management
+  const [isDeleting, setIsDeleting] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
-  // Effect to sync local state if the parent prop changes (e.g., external Firestore update)
+  // --- Effects ---
   useEffect(() => {
     setLocalAssignment(assignment);
   }, [assignment]);
 
-  // Memoized throttled save function
+  // --- Utility Functions ---
   const throttledSave = useCallback(
     throttle((field: keyof Assignment, value: any) => {
       if (value !== assignment[field]) {
-        // Only save if value actually changed
         let valueToSave = value;
-        // Ensure numeric fields are saved as numbers or null
         if (
           ["score", "totalScore", "weight", "relativeWeightInGroup"].includes(
             field
@@ -72,23 +71,29 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
           valueToSave = value === null || value === "" ? null : Number(value);
           if (isNaN(valueToSave as number)) valueToSave = null;
         }
-        // Prepare update payload, handling side-effects of group change
         const updateData: Partial<Assignment> = { [field]: valueToSave };
         if (field === "groupId") {
-          if (valueToSave) {
-            updateData.weight = 0;
-          } // Clear direct weight if joining group
-          else {
-            updateData.relativeWeightInGroup = null;
-          } // Clear relative weight if leaving group
+          if (valueToSave) updateData.weight = 0;
+          else updateData.relativeWeightInGroup = null;
         }
-        onSave(assignment.id, updateData); // Call parent save function
+        onSave(assignment.id, updateData);
       }
     }, 600),
     [onSave, assignment]
-  ); // Dependencies: Recreate if onSave or assignment ID changes
+  );
 
-  // Handler for changes in input/select fields
+  const focusCell = (rowIndex: number, fieldName: string | undefined) => {
+    if (!fieldName) return;
+    const targetInput = document.querySelector(
+      `[data-row-index="${rowIndex}"][data-field-name="${fieldName}"]`
+    ) as HTMLElement;
+    targetInput?.focus();
+    if (targetInput?.tagName === "INPUT") {
+      (targetInput as HTMLInputElement).select();
+    }
+  };
+
+  // --- Handlers ---
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -96,79 +101,83 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
     let processedValue: string | number | boolean | null | undefined = value;
 
     if (name === "isDropped") {
-      // Handle checkbox
       processedValue = (e.target as HTMLInputElement).checked;
     } else if (type === "number") {
-      // Handle number inputs (allow empty string temporarily)
       processedValue = value === "" ? "" : parseFloat(value);
       if (isNaN(processedValue as number) && value.trim() !== "") {
         processedValue = value;
-      } // Keep invalid string temporarily
+      }
     } else if (name === "groupId" && value === "") {
-      // Handle '-- No Group --' selection
       processedValue = null;
     }
-    // Update local state immediately for responsive UI
     setLocalAssignment((prev) => ({ ...prev, [name]: processedValue }));
   };
 
-  // Handler for when an input/select loses focus (triggers save)
   const handleBlur = (
     e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const field = e.target.name as keyof Assignment;
     let currentValue = localAssignment[field];
-    const inputType = e.target.type; // Get type from the event target
-    // Convert empty string from number input to null before saving
-    if (inputType === "number" && currentValue === "") {
+    if (e.target.type === "number" && currentValue === "") {
       currentValue = null;
     }
-    throttledSave(field, currentValue); // Trigger throttled save
+    throttledSave(field, currentValue);
   };
 
-  // Handler for keyboard navigation (Enter key)
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    if (e.key === "Enter") {
+    const currentFieldName = (e.target as HTMLElement).dataset.fieldName;
+    const nextRowIndex = rowIndex + 1;
+    const prevRowIndex = rowIndex - 1;
+
+    if (e.key === "ArrowDown") {
       e.preventDefault();
-      (e.target as HTMLElement).blur(); // Trigger blur (which saves)
-
-      const currentFieldName = (e.target as HTMLElement).dataset.fieldName;
-      const nextRowIndex = rowIndex + 1;
-
-      // Focus next row or trigger add
-      if (nextRowIndex < totalRows) {
-        // Focus same field in next row
-        const nextInput = document.querySelector(
-          `[data-row-index="${nextRowIndex}"][data-field-name="${currentFieldName}"]`
+      if (nextRowIndex < totalRows) focusCell(nextRowIndex, currentFieldName);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (prevRowIndex >= 0) focusCell(prevRowIndex, currentFieldName);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextField = (e.target as HTMLElement)
+        .closest("td")
+        ?.nextElementSibling?.querySelector("[data-field-name]") as HTMLElement;
+      nextField?.focus();
+      if (nextField?.tagName === "INPUT")
+        (nextField as HTMLInputElement).select();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevField = (e.target as HTMLElement)
+        .closest("td")
+        ?.previousElementSibling?.querySelector(
+          "[data-field-name]"
         ) as HTMLElement;
-        nextInput?.focus();
-        if (nextInput?.tagName === "INPUT")
-          (nextInput as HTMLInputElement).select();
+      prevField?.focus();
+      if (prevField?.tagName === "INPUT")
+        (prevField as HTMLInputElement).select();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLElement).blur();
+      if (nextRowIndex < totalRows) {
+        focusCell(nextRowIndex, currentFieldName);
       } else if (nextRowIndex === totalRows && currentFieldName !== "actions") {
-        // Add new row if on last row
         onAddRowBelow();
       }
     }
-    // Arrow key logic could be added here
   };
 
-  // Handler for 'Drop' checkbox (saves immediately)
   const toggleDrop = () => {
     const newDroppedState = !localAssignment.isDropped;
     setLocalAssignment((prev) => ({ ...prev, isDropped: newDroppedState }));
-    onSave(assignment.id, { isDropped: newDroppedState }); // Save checkbox change immediately
+    onSave(assignment.id, { isDropped: newDroppedState });
   };
 
-  // New: Toggle extra credit option
   const toggleExtraCredit = () => {
     const newExtraCredit = !localAssignment.isExtraCredit;
     setLocalAssignment((prev) => ({ ...prev, isExtraCredit: newExtraCredit }));
     onSave(assignment.id, { isExtraCredit: newExtraCredit });
   };
 
-  // Handler for delete button
   const handleDelete = async () => {
     if (
       !currentUser ||
@@ -184,16 +193,13 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         `users/${currentUser.uid}/courses/${courseId}/assignments/${assignment.id}`
       );
       await deleteDoc(assignmentRef);
-      // Row disappears via parent listener
     } catch (error) {
       console.error("Error deleting assignment:", error);
       alert("Failed to delete.");
       setIsDeleting(false);
     }
-    // No need to reset isDeleting on success as component will likely unmount/re-render
   };
 
-  // Helper to generate common input/select props using @apply classes
   const getInputProps = (
     fieldName: keyof Assignment,
     type: string = "text",
@@ -202,27 +208,25 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
     let value = localAssignment[fieldName];
     if (type === "number" && (value === null || typeof value === "undefined")) {
       value = "";
-    } // Display empty for null numbers
+    }
     return {
       name: fieldName,
       "data-assignment-id": assignment.id,
       "data-row-index": rowIndex,
       "data-field-name": fieldName,
-      value: value as string | number, // Value for controlled component
+      value: value as string | number,
       onChange: handleInputChange,
       onBlur: handleBlur,
       onKeyDown: handleKeyDown,
       type: type,
-      disabled: isDeleting, // Standard attributes
-      // Apply base class and any specific alignment/styling class
+      disabled: isDeleting,
       className: `assignment-input ${alignmentClass}`,
     };
   };
 
-  // Conditional classes based on state
+  // --- Render ---
   const isGrouped = !!localAssignment.groupId;
 
-  // Modified to return cell contents without the tr wrapper
   return (
     <>
       {/* Name Input */}
@@ -378,4 +382,5 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
     </>
   );
 };
+
 export default AssignmentRow;
