@@ -220,7 +220,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
       onKeyDown: handleKeyDown,
       type: type,
       disabled: isDeleting,
-      className: `assignment-input ${alignmentClass}`,
+      className: `w-full text-sm bg-transparent border-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 focus:bg-blue-50 disabled:opacity-50 ${alignmentClass}`,
     };
   };
 
@@ -230,7 +230,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
   return (
     <>
       {/* Name Input */}
-      <td className="assignment-cell">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300">
         <input
           ref={nameInputRef}
           {...getInputProps("name", "text", "font-medium")}
@@ -239,9 +239,9 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         />
       </td>
       {/* Score Input */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         <input
-          {...getInputProps("score", "number", "assignment-input-center")}
+          {...getInputProps("score", "number")}
           placeholder="-"
           step="any"
           min="0"
@@ -249,9 +249,9 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         />
       </td>
       {/* Total Score Input */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         <input
-          {...getInputProps("totalScore", "number", "assignment-input-center")}
+          {...getInputProps("totalScore", "number")}
           placeholder="e.g. 100"
           step="any"
           min="0"
@@ -259,14 +259,14 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         />
       </td>
       {/* Weight (%) Display/Input */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         {isGrouped ? (
-          <span className="calculated-weight-display text-center block">
+          <span className="block w-full text-sm text-gray-500 italic text-center">
             {effectiveWeight !== null ? `${effectiveWeight.toFixed(2)}` : "N/A"}
           </span>
         ) : (
           <input
-            {...getInputProps("weight", "number", "assignment-input-center")}
+            {...getInputProps("weight", "number")}
             placeholder={"0"}
             title="Assignment weight"
             step="any"
@@ -277,11 +277,11 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         )}
       </td>
       {/* Group Select Dropdown */}
-      <td className="assignment-cell">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300">
         <select
           {...getInputProps("groupId", "select")}
           value={localAssignment.groupId || ""}
-          className="assignment-select text-center block"
+          className="w-full text-sm bg-transparent border-none text-center focus:outline-none focus:ring-1 focus:ring-blue-400 focus:bg-blue-50 disabled:opacity-50"
           aria-label="Assignment Group"
           title="Assign to a group..."
         >
@@ -294,13 +294,9 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         </select>
       </td>
       {/* Weight in Group Input */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         <input
-          {...getInputProps(
-            "relativeWeightInGroup",
-            "number",
-            "assignment-input-center"
-          )}
+          {...getInputProps("relativeWeightInGroup", "number")}
           disabled={!isGrouped || isDeleting}
           placeholder={isGrouped ? "-" : "N/A"}
           title={
@@ -316,37 +312,37 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         />
       </td>
       {/* Drop Checkbox */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         <input
           type="checkbox"
           name="isDropped"
           checked={!!localAssignment.isDropped}
           onChange={toggleDrop}
           disabled={isDeleting}
-          className="assignment-checkbox"
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
           title="Drop assignment"
           aria-label="Drop assignment"
         />
       </td>
       {/* Extra Credit Checkbox */}
-      <td className="assignment-cell assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         <input
           type="checkbox"
           name="isExtraCredit"
           checked={!!localAssignment.isExtraCredit}
           onChange={toggleExtraCredit}
           disabled={isDeleting}
-          className="assignment-checkbox"
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
           title="Mark as extra credit"
           aria-label="Extra credit"
         />
       </td>
       {/* Actions (Delete) Button */}
-      <td className="assignment-cell-last assignment-cell-center">
+      <td className="px-3 py-1.5 align-middle text-center">
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className={`icon-button icon-button-danger ${
+          className={`inline-flex items-center justify-center h-7 w-7 rounded transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-1 text-red-500 hover:bg-red-100 hover:text-red-700 focus:ring-red-500 ${
             isDeleting ? "cursor-not-allowed" : ""
           }`}
           title="Delete assignment"

@@ -30,9 +30,6 @@ input[type="number"] {
   .assignment-cell-center {
     @apply text-center;
   }
-  .assignment-cell-right {
-    @apply text-right;
-  }
 
   /* Base style for editable inputs within the table */
   .assignment-input {
@@ -43,20 +40,12 @@ input[type="number"] {
   .assignment-input-center {
     @apply text-center;
   }
-  .assignment-input-right {
-    @apply text-right;
-  }
 
   /* Base style for select dropdown in the table */
   .assignment-select {
     @apply w-full text-sm bg-transparent border-none appearance-none rounded-none
              focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-400 focus:bg-blue-50
              disabled:bg-transparent disabled:cursor-not-allowed disabled:opacity-60;
-  }
-
-  /* Calculated weight display */
-  .calculated-weight-display {
-    @apply block w-full text-sm text-gray-500 italic text-right;
   }
 
   /* Checkbox style */
@@ -70,20 +59,8 @@ input[type="number"] {
            transition-colors duration-150 ease-in-out
            focus:outline-none focus:ring-2 focus:ring-offset-1;
   }
-  .icon-button-default {
-    @apply text-blue-600 hover:bg-blue-100 hover:text-blue-800 focus:ring-blue-500;
-  }
   .icon-button-danger {
     @apply text-red-500 hover:bg-red-100 hover:text-red-700 focus:ring-red-500;
-  }
-  .icon-button-save {
-    @apply text-green-600 hover:bg-green-100 hover:text-green-800 focus:ring-green-500;
-  }
-  .icon-button-cancel {
-    @apply text-gray-500 hover:bg-gray-200 hover:text-gray-700 focus:ring-gray-400;
-  }
-  .icon-button:disabled {
-    @apply text-gray-400 cursor-not-allowed bg-transparent opacity-50;
   }
 
   /* Basic button with text */
@@ -93,9 +70,6 @@ input[type="number"] {
   .button-primary {
     @apply text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500;
   }
-  .button-secondary {
-    @apply text-gray-700 bg-white border-gray-300 hover:bg-gray-50 focus:ring-blue-500;
-  }
 
   /* Simple Table Styles (for GroupManager, Cutoffs) */
   .simple-table-cell {
@@ -103,13 +77,5 @@ input[type="number"] {
   }
   .simple-table-header {
     @apply border border-gray-200 px-3 py-2 text-left font-medium text-gray-600 bg-gray-50;
-  }
-  .simple-table-cell-actions {
-    @apply text-right whitespace-nowrap;
-  }
-
-  /* Tooltip Style Override (Example) */
-  .react-tooltip {
-    @apply !bg-gray-800 !text-white !text-xs !px-2 !py-1 !rounded !shadow-lg !max-w-xs !normal-case !leading-normal z-50;
   }
 }

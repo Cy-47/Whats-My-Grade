@@ -52,12 +52,12 @@ export function SortableAssignmentRow({ id, rowProps }: SortableRowProps) {
     <tr
       ref={setNodeRef}
       style={style}
-      className={`hover:bg-gray-50 transition-colors duration-50 ${isDroppedClass} ${
+      className={`hover:bg-gray-50 transition-colors duration-150 ${isDroppedClass} ${
         isDragging ? "bg-blue-50" : ""
       }`}
     >
       {/* Add a drag handle before the first cell */}
-      <td className="w-5 px-1 border-r border-gray-100">
+      <td className="w-5 px-1 border-r border-gray-200">
         <div
           {...attributes}
           {...listeners}
