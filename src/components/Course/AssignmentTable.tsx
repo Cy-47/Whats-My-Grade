@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableAssignmentRow } from "./SortableAssignmentRow";
+import { calculateEffectiveWeight } from "../../utils/gradeCalculations";
 
 // Define the missing interface
 interface AssignmentTableProps {
@@ -233,7 +234,11 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
                     onSave: handleSaveAssignment,
                     courseId,
                     onAddRowBelow: () => handleAddAssignment(true),
-                    effectiveWeight: null,
+                    effectiveWeight: calculateEffectiveWeight(
+                      assignment,
+                      assignments,
+                      groups
+                    ),
                     groupUsesManualWeight: false,
                   }}
                 />
