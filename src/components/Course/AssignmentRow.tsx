@@ -112,7 +112,26 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
     } else if (name === "groupId" && value === "") {
       processedValue = null;
     }
+
     setLocalAssignment((prev) => ({ ...prev, [name]: processedValue }));
+
+    // Immediately save the group change without waiting for blur
+    if (name === "groupId") {
+      const valueToSave = value === "" ? null : value;
+      const updateData: Partial<Assignment> = {
+        groupId: valueToSave,
+      };
+
+      // // If assigned to a group, reset direct weight
+      // if (valueToSave) {
+      //   updateData.weight = 0;
+      // } else {
+      //   // If removed from group, clear the relative weight
+      //   updateData.relativeWeightInGroup = null;
+      // }
+
+      onSave(assignment.id, updateData);
+    }
   };
 
   const handleBlur = (
