@@ -1,17 +1,9 @@
 // src/components/Course/GroupManager.tsx
 import React, { useState } from "react";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
+import { FaTrash, FaPlus } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 import { AssignmentGroup, Assignment } from "../../types";
-import { FaTrash, FaPlus } from "react-icons/fa";
+import { useCourseData } from "../../hooks/useFirestore";
 
 interface GroupManagerProps {
   courseId: string;
@@ -33,11 +25,12 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     field: keyof AssignmentGroup;
   } | null>(null);
 
+  // Use our custom hook for data operations
+  const { addAssignmentGroup, updateAssignmentGroup, deleteAssignmentGroup } =
+    useCourseData(courseId);
+
   /**
    * Updates a single field of an assignment group.
-   * @param groupId - ID of the group to update.
-   * @param field - Field name to update.
-   * @param value - New value for the field.
    */
   const handleGroupFieldChange = async (
     groupId: string,
@@ -45,14 +38,9 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     value: string | number
   ) => {
     if (!currentUser) return;
-    const groupRef = doc(
-      db,
-      `users/${currentUser.uid}/courses/${courseId}/assignmentGroups/${groupId}`
-    );
-    try {
-      await updateDoc(groupRef, { [field]: value });
-    } catch (error) {
-      console.error(`Error updating group ${field}:`, error);
+    const success = await updateAssignmentGroup(groupId, { [field]: value });
+    if (!success) {
+      console.error(`Error updating group ${field}`);
       alert(`Failed to update group ${field}.`);
     }
   };
@@ -62,7 +50,7 @@ const GroupManager: React.FC<GroupManagerProps> = ({
   };
 
   /**
-   * Adds a new assignment group to Firestore.
+   * Adds a new assignment group.
    */
   const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +58,7 @@ const GroupManager: React.FC<GroupManagerProps> = ({
       alert("Not logged in.");
       return;
     }
+
     if (
       newGroupName.trim() === "" ||
       newGroupWeight === "" ||
@@ -80,39 +69,37 @@ const GroupManager: React.FC<GroupManagerProps> = ({
       alert("Valid name & non-negative weight required.");
       return;
     }
+
     setIsAdding(true);
-    const groupsCol = collection(
-      db,
-      `users/${currentUser.uid}/courses/${courseId}/assignmentGroups`
-    );
-    try {
-      await addDoc(groupsCol, {
-        courseId: courseId,
-        userId: currentUser.uid,
-        name: newGroupName.trim(),
-        weight: Number(newGroupWeight),
-        createdAt: serverTimestamp(),
-      });
+
+    const groupData = {
+      courseId,
+      userId: currentUser.uid,
+      name: newGroupName.trim(),
+      weight: Number(newGroupWeight),
+    };
+
+    const groupId = await addAssignmentGroup(groupData);
+
+    if (groupId) {
       setNewGroupName("");
       setNewGroupWeight(10); // Reset form
-    } catch (error) {
-      console.error("Error adding group:", error);
+    } else {
       alert("Failed to add group.");
-    } finally {
-      setIsAdding(false);
     }
+
+    setIsAdding(false);
   };
 
   /**
-   * Deletes an assignment group from Firestore after validation.
-   * @param groupId - ID of the group to delete.
-   * @param groupName - Name of the group to delete.
+   * Deletes an assignment group after validation.
    */
   const handleDeleteGroup = async (groupId: string, groupName: string) => {
     if (!currentUser) {
       alert("Not logged in.");
       return;
     }
+
     // Check if assignments are linked
     const assignmentsInGroup = assignments.filter((a) => a.groupId === groupId);
     if (assignmentsInGroup.length > 0) {
@@ -121,21 +108,17 @@ const GroupManager: React.FC<GroupManagerProps> = ({
       );
       return;
     }
+
     // Confirm deletion
     if (
       !window.confirm(`Delete group "${groupName}"? This cannot be undone.`)
     ) {
       return;
     }
-    const groupRef = doc(
-      db,
-      `users/${currentUser.uid}/courses/${courseId}/assignmentGroups/${groupId}`
-    );
-    try {
-      await deleteDoc(groupRef);
-      // Row will vanish via listener
-    } catch (error) {
-      console.error("Error deleting group:", error);
+
+    const success = await deleteAssignmentGroup(groupId);
+
+    if (!success) {
       alert("Failed to delete group.");
     }
   };
@@ -301,4 +284,5 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     </div>
   );
 };
+
 export default GroupManager;

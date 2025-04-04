@@ -1,19 +1,5 @@
 // src/components/Course/AssignmentTable.tsx
-import React, { useState, useCallback } from "react";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  doc,
-  updateDoc,
-  getDocs,
-  query,
-  orderBy,
-  Timestamp,
-} from "firebase/firestore";
-import { db } from "../../firebase";
-import { useAuth } from "../../contexts/AuthContext";
-import { Assignment, AssignmentGroup } from "../../types";
+import React, { useState, useEffect, useCallback } from "react";
 import { FaPlus } from "react-icons/fa";
 import { DndContext, closestCenter, DragEndEvent } from "@dnd-kit/core";
 import {
@@ -23,26 +9,15 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableAssignmentRow } from "./SortableAssignmentRow";
 import { calculateEffectiveWeight } from "../../utils/gradeCalculations";
+import { Assignment, AssignmentGroup } from "../../types";
+import { useCourseData } from "../../hooks/useFirestore";
+import { useAuth } from "../../contexts/AuthContext";
 
-// Define the missing interface
 interface AssignmentTableProps {
   courseId: string;
   assignments: Assignment[];
   groups: AssignmentGroup[];
 }
-
-/**
- * AssignmentTable Component
- *
- * Displays and manages assignments for a course in a spreadsheet-like interface.
- *
- * Features:
- * - Add, edit, and delete assignments
- * - Drag-and-drop reordering
- * - Mark assignments as dropped or extra credit
- * - Group assignment selection
- * - Keyboard navigation for efficient data entry
- */
 
 /**
  * Component for displaying and managing course assignments.
@@ -57,33 +32,32 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     []
   );
 
-  // Load assignments order from the server
-  React.useEffect(() => {
-    const fetchAssignments = async () => {
-      if (!currentUser || !courseId) return;
-      try {
-        const assignmentsCol = collection(
-          db,
-          `users/${currentUser.uid}/courses/${courseId}/assignments`
-        );
-        const q = query(assignmentsCol, orderBy("displayOrder"));
-        const querySnapshot = await getDocs(q);
-        const fetchedAssignments = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Assignment[];
-        setOrderedAssignments(fetchedAssignments);
-      } catch (error) {
-        console.error("Error fetching assignments:", error);
-      }
-    };
+  // Use our custom hook for data operations
+  const {
+    addAssignment,
+    updateAssignment,
+    deleteAssignment,
+    updateAssignmentOrder,
+  } = useCourseData(courseId);
 
-    fetchAssignments();
-  }, [currentUser, courseId]);
+  // Update ordered assignments when assignments change
+  useEffect(() => {
+    // Sort by displayOrder (if exists) or fallback to createdAt
+    const sorted = [...assignments].sort((a, b) => {
+      if (a.displayOrder !== undefined && b.displayOrder !== undefined) {
+        return a.displayOrder - b.displayOrder;
+      }
+      // Fallback to createdAt if displayOrder is missing
+      const aTime = a.createdAt?.toMillis() || 0;
+      const bTime = b.createdAt?.toMillis() || 0;
+      return aTime - bTime;
+    });
+
+    setOrderedAssignments(sorted);
+  }, [assignments]);
 
   /**
    * Handles assignment reordering through drag and drop.
-   * Updates the display order in Firestore.
    */
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -97,106 +71,92 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
       );
 
       const newOrder = arrayMove(orderedAssignments, oldIndex, newIndex);
+
+      // Update local state immediately for UI responsiveness
       setOrderedAssignments(newOrder);
 
-      // Update the order on the server
-      if (!currentUser) return; // Ensure currentUser is not null
-      try {
-        for (let i = 0; i < newOrder.length; i++) {
-          const assignmentRef = doc(
-            db,
-            `users/${currentUser.uid}/courses/${courseId}/assignments/${newOrder[i].id}`
-          );
-          await updateDoc(assignmentRef, { displayOrder: i * 10 });
-        }
-      } catch (error) {
-        console.error("Error updating assignment order:", error);
+      // Prepare data for batch update
+      const updateData = newOrder.map((assignment, index) => ({
+        id: assignment.id,
+        displayOrder: index * 10,
+      }));
+
+      // Update in Firestore
+      const success = await updateAssignmentOrder(updateData);
+
+      if (!success) {
         alert("Failed to update assignment order.");
+        // Revert to original order if the update failed
+        setOrderedAssignments(assignments);
       }
     }
   };
 
   /**
    * Adds a new assignment to the course.
-   * @param focusNew - Whether to focus on the new assignment after adding.
    */
   const handleAddAssignment = useCallback(
     async (focusNew = false) => {
-      if (!currentUser || !courseId) return;
-      try {
-        const highestOrder =
-          orderedAssignments.length > 0
-            ? Math.max(...orderedAssignments.map((a) => a.displayOrder || 0)) +
-              10
-            : 10;
+      if (!currentUser) return;
 
-        const assignmentsCol = collection(
-          db,
-          `users/${currentUser.uid}/courses/${courseId}/assignments`
-        );
-        const newAssignment = {
-          courseId: courseId,
-          userId: currentUser.uid,
-          name: "New Assignment",
-          score: null,
-          totalScore: 100,
-          weight: 0,
-          deadline: null,
-          isDropped: false,
-          isExtraCredit: false,
-          groupId: null,
-          relativeWeightInGroup: null,
-          createdAt: serverTimestamp(),
-          displayOrder: highestOrder,
-        };
-        const newDocRef = await addDoc(assignmentsCol, newAssignment);
+      const newAssignmentData = {
+        courseId,
+        userId: currentUser.uid,
+        name: "New Assignment",
+        score: null,
+        totalScore: 100,
+        weight: 0,
+        deadline: null,
+        isDropped: false,
+        isExtraCredit: false,
+        groupId: null,
+        relativeWeightInGroup: null,
+      };
 
-        // Update local state with the new assignment
-        setOrderedAssignments((prev) => [
-          ...prev,
-          { id: newDocRef.id, ...newAssignment, createdAt: Timestamp.now() }, // Use Firestore's Timestamp
-        ]);
+      const newAssignmentId = await addAssignment(newAssignmentData);
 
-        if (focusNew) {
-          setTimeout(() => {
-            const newRowInput = document.querySelector(
-              `[data-assignment-id="${newDocRef.id}"][data-field-name="name"]`
-            ) as HTMLInputElement;
-            newRowInput?.focus();
-            newRowInput?.select();
-          }, 150);
-        }
-      } catch (error) {
-        console.error("Error adding assignment:", error);
+      if (!newAssignmentId) {
         alert("Failed to add assignment.");
+        return;
+      }
+
+      // Focus on the new assignment if requested
+      if (focusNew) {
+        setTimeout(() => {
+          const newRowInput = document.querySelector(
+            `[data-assignment-id="${newAssignmentId}"][data-field-name="name"]`
+          ) as HTMLInputElement;
+          newRowInput?.focus();
+          newRowInput?.select();
+        }, 150);
       }
     },
-    [currentUser, courseId, orderedAssignments]
+    [currentUser, courseId, addAssignment]
   );
 
-  // Basic implementation of saving edits (called from AssignmentRow)
+  /**
+   * Saves changes to an assignment.
+   */
   const handleSaveAssignment = async (
     assignmentId: string,
     updatedData: Partial<Assignment>
   ) => {
-    if (!currentUser || !courseId) return;
-    try {
-      const assignmentRef = doc(
-        db,
-        `users/${currentUser.uid}/courses/${courseId}/assignments/${assignmentId}`
-      );
-      await updateDoc(assignmentRef, updatedData);
-    } catch (error) {
-      console.error("Error updating assignment:", error);
+    const success = await updateAssignment(assignmentId, updatedData);
+    if (!success) {
       alert("Failed to save changes.");
     }
   };
 
-  // Callback to handle assignment deletion
-  const handleDeleteAssignment = (assignmentId: string) => {
-    setOrderedAssignments((prevAssignments) =>
-      prevAssignments.filter((assignment) => assignment.id !== assignmentId)
-    );
+  /**
+   * Handles assignment deletion.
+   */
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    const success = await deleteAssignment(assignmentId);
+    if (!success) {
+      alert("Failed to delete assignment.");
+      return false;
+    }
+    return true;
   };
 
   return (
@@ -263,7 +223,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
               {orderedAssignments.map((assignment, index) => (
                 <SortableAssignmentRow
                   key={assignment.id}
-                  id={assignment.id} // Pass `id` separately
+                  id={assignment.id}
                   rowProps={{
                     assignment,
                     rowIndex: index,

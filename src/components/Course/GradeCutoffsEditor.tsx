@@ -5,23 +5,11 @@ import { v4 as uuidv4 } from "uuid"; // For unique keys
 import { FaTimes, FaPlus } from "react-icons/fa";
 
 /**
- * GradeCutoffsEditor Component
- *
- * Allows editing grade cutoffs (e.g., A >= 90%, B >= 80%) for a course.
- * Changes to cutoffs affect the displayed letter grade.
- *
- * Features:
- * - Add, edit, and remove grade cutoffs
- * - Validation to ensure cutoffs make sense
- * - Auto-sorting by percentage
- */
-
-/**
  * Component for editing grade cutoffs for a course.
  */
 interface GradeCutoffsEditorProps {
   currentCutoffs: GradeCutoff[];
-  onSave: (newCutoffs: GradeCutoff[]) => Promise<void>; // Callback to save
+  onSave: (newCutoffs: GradeCutoff[]) => Promise<void>;
 }
 
 const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
@@ -31,16 +19,13 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
   const [cutoffs, setCutoffs] = useState<GradeCutoff[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize local state from props, ensuring unique IDs
+  // Initialize state from props
   useEffect(() => {
     setCutoffs(currentCutoffs.map((c) => ({ ...c, id: c.id || uuidv4() })));
   }, [currentCutoffs]);
 
   /**
    * Handles changes to a specific grade cutoff field.
-   * @param id - ID of the cutoff being edited.
-   * @param field - Field name being updated.
-   * @param value - New value for the field.
    */
   const handleCutoffChange = (
     id: string,
@@ -50,15 +35,14 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
     setCutoffs((prevCutoffs) =>
       prevCutoffs.map((cutoff) => {
         if (cutoff.id === id) {
-          // Process value based on field type
           return {
             ...cutoff,
             [field]:
               field === "minPercentage"
                 ? value === ""
                   ? 0
-                  : parseFloat(value) // Parse percentage, default 0 if empty
-                : value.toUpperCase().trim(), // Uppercase and trim grade letter
+                  : parseFloat(value)
+                : value.toUpperCase().trim(),
           };
         }
         return cutoff;
@@ -66,17 +50,16 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
     );
   };
 
-  // Add a new blank cutoff row to the list
+  // Add a new cutoff
   const addCutoff = () => {
     setCutoffs((prevCutoffs) =>
-      [
-        ...prevCutoffs,
-        { id: uuidv4(), grade: "", minPercentage: 0 }, // Add new blank entry
-      ].sort((a, b) => b.minPercentage - a.minPercentage)
-    ); // Keep sorted descending by percentage
+      [...prevCutoffs, { id: uuidv4(), grade: "", minPercentage: 0 }].sort(
+        (a, b) => b.minPercentage - a.minPercentage
+      )
+    );
   };
 
-  // Remove a cutoff row by its ID
+  // Remove a cutoff
   const removeCutoff = (id: string) => {
     setCutoffs((prevCutoffs) =>
       prevCutoffs.filter((cutoff) => cutoff.id !== id)
@@ -84,54 +67,55 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
   };
 
   /**
-   * Saves the updated grade cutoffs to Firestore after validation.
+   * Saves the updated grade cutoffs.
    */
   const handleSaveClick = async () => {
-    setIsSaving(true); // Indicate saving process
-    // Basic validation
+    setIsSaving(true);
+
+    // Validation
     const isValid = cutoffs.every(
       (c) =>
-        c.grade.trim() !== "" && // Grade letter must not be empty
-        !isNaN(c.minPercentage) && // Percentage must be a number
-        c.minPercentage >= 0 && // Percentage between 0
-        c.minPercentage <= 100 // and 100
+        c.grade.trim() !== "" &&
+        !isNaN(c.minPercentage) &&
+        c.minPercentage >= 0 &&
+        c.minPercentage <= 100
     );
+
     if (!isValid) {
       alert(
         "Please ensure all cutoffs have a grade letter and a valid percentage between 0 and 100."
       );
-      setIsSaving(false); // Stop saving
+      setIsSaving(false);
       return;
     }
-    // Final sort before saving to ensure consistency
+
+    // Sort before saving
     const sortedCutoffs = [...cutoffs].sort(
       (a, b) => b.minPercentage - a.minPercentage
     );
+
     try {
-      await onSave(sortedCutoffs); // Call parent save function
-      // Optional: Add success feedback (e.g., temporary message)
+      await onSave(sortedCutoffs);
     } catch (error) {
-      // Error is likely handled by parent, but alert here too
       alert("Failed to save grade cutoffs.");
     } finally {
-      setIsSaving(false); // Finish saving process
+      setIsSaving(false);
     }
   };
 
-  // Memoized check to see if local state differs from original props (ignoring ID and initial order)
+  // Check if there are unsaved changes
   const hasChanges = useMemo(() => {
-    // Create comparable representations (object arrays without ID, sorted)
     const currentSimple = currentCutoffs
       .map(({ grade, minPercentage }) => ({ grade, minPercentage }))
       .sort((a, b) => b.minPercentage - a.minPercentage);
+
     const editingSimple = cutoffs
       .map(({ grade, minPercentage }) => ({ grade, minPercentage }))
       .sort((a, b) => b.minPercentage - a.minPercentage);
-    // Compare JSON strings for deep equality check
-    return JSON.stringify(currentSimple) !== JSON.stringify(editingSimple);
-  }, [cutoffs, currentCutoffs]); // Recalculate only if cutoffs or currentCutoffs change
 
-  // Render UI
+    return JSON.stringify(currentSimple) !== JSON.stringify(editingSimple);
+  }, [cutoffs, currentCutoffs]);
+
   return (
     <div className="space-y-3">
       {/* List of Cutoff Items */}
@@ -220,4 +204,5 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
     </div>
   );
 };
+
 export default GradeCutoffsEditor;

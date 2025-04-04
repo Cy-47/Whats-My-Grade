@@ -1,16 +1,6 @@
 // src/components/Course/CourseView.tsx
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  doc,
-  collection,
-  query,
-  onSnapshot,
-  orderBy,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
-import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   Course,
@@ -25,213 +15,68 @@ import {
 } from "../../utils/gradeCalculations";
 import { FaInfoCircle, FaTrash } from "react-icons/fa";
 import { Tooltip } from "react-tooltip";
-import "react-tooltip/dist/react-tooltip.css"; // Tooltip CSS
+import "react-tooltip/dist/react-tooltip.css";
 
+import { useCourseData } from "../../hooks/useFirestore";
 import AssignmentTable from "./AssignmentTable";
 import GradeDisplay from "./GradeDisplay";
 import GroupManager from "./GroupManager";
 import GradeCutoffsEditor from "./GradeCutoffsEditor";
 
 /**
- * CourseView Component
- *
- * Displays the main view for a single course, including course details,
- * overall grade, assignment table, and management sections for assignment groups
- * and grade cutoffs.
- *
- * Features:
- * - Real-time data fetching from Firestore
- * - Course editing (name, deletion)
- * - Grade calculation and display
- * - Integration with assignment table, groups, and cutoffs
- */
-
-/**
  * Main course view component that coordinates all course-related features.
  */
 const CourseView: React.FC = () => {
-  const { courseId } = useParams<{ courseId: string }>();
-  const { currentUser } = useAuth();
+  const { courseId = "" } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [groups, setGroups] = useState<AssignmentGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isDeletingCourse, setIsDeletingCourse] = useState(false);
   const [isEditingCourseName, setIsEditingCourseName] = useState(false);
+
+  // Use our custom hook for all data operations
+  const {
+    course,
+    assignments,
+    groups,
+    loading,
+    error,
+    updateCourse,
+    deleteCourse,
+    updateGradeCutoffs,
+  } = useCourseData(courseId);
 
   const handleCourseNameBlur = () => {
     setIsEditingCourseName(false);
   };
 
-  /**
-   * Fetches course, assignments, and groups data from Firestore.
-   * Sets up real-time listeners for updates.
-   */
-  useEffect(() => {
-    if (!currentUser || !courseId) {
-      setLoading(false);
-      setError("Invalid user or course ID.");
-      return; // Exit if user/courseId invalid
-    }
-
-    setLoading(true); // Start loading
-    setError(null); // Clear previous errors
-    const coursePath = `users/${currentUser.uid}/courses/${courseId}`;
-    let listeners: (() => void)[] = []; // To store unsubscribe functions
-
-    try {
-      // Listener for Course Details (name, cutoffs)
-      const courseUnsub = onSnapshot(
-        doc(db, coursePath),
-        (docSnap) => {
-          // Success callback
-          if (docSnap.exists()) {
-            setCourse({ id: docSnap.id, ...docSnap.data() } as Course);
-          } else {
-            // Course not found or user doesn't have access
-            console.warn(
-              `Course ${courseId} not found for user ${currentUser.uid}`
-            );
-            setError("Course not found or access denied.");
-            setCourse(null);
-            setAssignments([]);
-            setGroups([]); // Clear data
-            navigate("/", { replace: true }); // Redirect to home
-          }
-        },
-        (err) => {
-          // Error callback
-          console.error("Error fetching course details:", err);
-          setError("Failed to load course details.");
-          // Potentially set loading false here if this is critical path
-        }
-      );
-      listeners.push(courseUnsub); // Add unsubscribe function to array
-
-      // Listener for Assignments subcollection
-      const assignmentsCol = collection(db, coursePath, "assignments");
-      const assignmentsQuery = query(
-        assignmentsCol,
-        orderBy("createdAt", "asc")
-      ); // Order assignments
-      const assignmentsUnsub = onSnapshot(
-        assignmentsQuery,
-        (snapshot) => {
-          // Success callback
-          setAssignments(
-            snapshot.docs.map(
-              (doc) => ({ id: doc.id, ...doc.data() } as Assignment)
-            )
-          );
-          setLoading(false); // Mark loading as complete *after* assignments load (or primary data)
-        },
-        (err) => {
-          // Error callback
-          console.error("Error fetching assignments:", err);
-          setError("Failed to load assignments.");
-          setLoading(false); // Stop loading on error too
-        }
-      );
-      listeners.push(assignmentsUnsub);
-
-      // Listener for Assignment Groups subcollection
-      const groupsCol = collection(db, coursePath, "assignmentGroups");
-      const groupsQuery = query(groupsCol, orderBy("createdAt", "asc")); // Order groups
-      const groupsUnsub = onSnapshot(
-        groupsQuery,
-        (snapshot) => {
-          // Success callback
-          setGroups(
-            snapshot.docs.map(
-              (doc) => ({ id: doc.id, ...doc.data() } as AssignmentGroup)
-            )
-          );
-        },
-        (err) => {
-          // Error callback
-          console.error("Error fetching assignment groups:", err);
-          setError((prev) =>
-            prev ? `${prev}\nFailed to load groups.` : "Failed to load groups."
-          ); // Append error if one exists
-          // Don't necessarily stop loading here, depends if groups are optional display
-        }
-      );
-      listeners.push(groupsUnsub);
-    } catch (err) {
-      // Catch errors during listener setup itself
-      console.error("Error setting up Firestore listeners:", err);
-      setError("An unexpected error occurred while loading course data.");
-      setLoading(false);
-    }
-
-    // Cleanup function: Unsubscribe from all listeners when component unmounts or dependencies change
-    return () => {
-      console.log(
-        "Unsubscribing from Firestore listeners for course:",
-        courseId
-      );
-      listeners.forEach((unsub) => unsub());
-    };
-  }, [currentUser, courseId, navigate]); // Effect dependencies
-
-  // --- Memoized Calculations ---
+  // Memoized Calculations
   const courseData: CourseDataForCalc | null = useMemo(() => {
     if (!course) return null;
-    const safeCutoffs = course.gradeCutoffs || []; // Ensure cutoffs array exists
+    const safeCutoffs = course.gradeCutoffs || [];
     return { assignments, groups, gradeCutoffs: safeCutoffs };
   }, [assignments, groups, course]);
 
-  /**
-   * Calculates the overall grade percentage for the course.
-   */
   const overallPercentage = useMemo(() => {
     if (!courseData) return null;
     return calculateOverallGrade(courseData.assignments, courseData.groups);
   }, [courseData]);
 
-  /**
-   * Determines the letter grade based on the overall percentage and grade cutoffs.
-   */
   const letterGrade = useMemo(() => {
     if (overallPercentage === null || !courseData) return "-";
     return getLetterGrade(overallPercentage, courseData.gradeCutoffs);
   }, [overallPercentage, courseData]);
 
-  /**
-   * Saves updated grade cutoffs to Firestore.
-   * @param newCutoffs - The updated grade cutoffs array.
-   */
   const handleSaveCutoffs = useCallback(
     async (newCutoffs: GradeCutoff[]) => {
-      if (!currentUser || !courseId || !course) {
-        console.error(
-          "Cannot save cutoffs: Missing user, courseId, or course data."
-        );
-        alert("Could not save cutoffs. Please try again.");
-        return;
-      }
-      const courseRef = doc(db, `users/${currentUser.uid}/courses/${courseId}`);
-      try {
-        await updateDoc(courseRef, { gradeCutoffs: newCutoffs });
-        // Firestore listener will update local state automatically
-      } catch (err) {
-        console.error("Error updating grade cutoffs:", err);
+      const success = await updateGradeCutoffs(newCutoffs);
+      if (!success) {
         alert("Failed to save grade cutoffs.");
       }
     },
-    [currentUser, courseId, course]
-  ); // Dependencies for the callback
+    [updateGradeCutoffs]
+  );
 
-  /**
-   * Deletes the current course and navigates back to the home page.
-   */
   const handleDeleteCourse = useCallback(async () => {
-    // Guards and confirmation
     if (
-      !currentUser ||
-      !courseId ||
       !course ||
       isDeletingCourse ||
       !window.confirm(
@@ -240,71 +85,40 @@ const CourseView: React.FC = () => {
     ) {
       return;
     }
-    setIsDeletingCourse(true); // Indicate deletion in progress
-    setError(null); // Clear previous errors
-    try {
-      // Get reference to the course document
-      const courseRef = doc(db, `users/${currentUser.uid}/courses/${courseId}`);
 
-      // WARNING: Direct client-side deletion of subcollections is often discouraged for large datasets
-      // as it can be slow, hit rate limits, or fail partially.
-      // A Firebase Cloud Function triggered by the course document deletion is the robust solution.
-      // For simplicity here, we only delete the main course document. Subcollections become orphaned.
-      /*
-            // --- Optional: Client-side subcollection delete (use with caution) ---
-            console.log("Attempting to delete subcollections (assignments, groups)...");
-            const batch = writeBatch(db);
-            const assignmentsCol = collection(db, courseRef.path, 'assignments');
-            const groupsCol = collection(db, courseRef.path, 'assignmentGroups');
-            const assignmentsSnapshot = await getDocs(assignmentsCol); // Fetch docs to delete
-            const groupsSnapshot = await getDocs(groupsCol);       // Fetch docs to delete
-            assignmentsSnapshot.forEach(doc => batch.delete(doc.ref));
-            groupsSnapshot.forEach(doc => batch.delete(doc.ref));
-            await batch.commit(); // Commit batch deletion of subcollections
-            console.log("Subcollections deleted (if any).");
-            // --- End Optional Subcollection Delete ---
-            */
+    setIsDeletingCourse(true);
 
-      // Delete the main course document
-      await deleteDoc(courseRef);
-      console.log("Course document deleted:", courseId);
+    const success = await deleteCourse();
 
-      // Navigate user away after successful deletion
+    if (success) {
       navigate("/", { replace: true });
-    } catch (err) {
-      console.error("Error deleting course:", err);
-      setError("Failed to delete the course. Please try again.");
-      setIsDeletingCourse(false); // Reset deletion state only on error
+    } else {
+      setIsDeletingCourse(false);
+      alert("Failed to delete the course. Please try again.");
     }
-    // No need to setLoading(false) on success, as navigation occurs.
-  }, [currentUser, courseId, course, navigate, isDeletingCourse]); // Dependencies for the callback
+  }, [course, isDeletingCourse, deleteCourse, navigate]);
 
-  // Add a new callback for updating the course name
   const handleCourseNameChange = useCallback(
     async (newName: string) => {
-      if (!currentUser || !courseId || !course) return;
-      try {
-        const courseRef = doc(
-          db,
-          `users/${currentUser.uid}/courses/${courseId}`
-        );
-        await updateDoc(courseRef, { name: newName.trim() });
-      } catch (err) {
-        console.error("Error updating course name:", err);
+      if (!course) return;
+      const success = await updateCourse({ name: newName.trim() });
+      if (!success) {
         alert("Failed to update course name.");
       }
     },
-    [currentUser, courseId, course]
+    [course, updateCourse]
   );
 
-  // --- Render Logic ---
-  if (loading)
+  // Render logic
+  if (loading) {
     return (
       <div className="text-center text-gray-500 py-10">
         Loading course data...
       </div>
     );
-  if (error)
+  }
+
+  if (error) {
     return (
       <div
         className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative my-4"
@@ -313,7 +127,9 @@ const CourseView: React.FC = () => {
         {error}
       </div>
     );
-  if (!course || !courseId) {
+  }
+
+  if (!course) {
     return (
       <div
         className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative my-4"
@@ -324,11 +140,11 @@ const CourseView: React.FC = () => {
     );
   }
 
-  // Tooltip content string
+  // Tooltip content
   const groupInfoTooltipContent =
     "Assignment groups let you categorize assignments (like Homework, Exams). Each group gets an overall weight towards the final grade. Assignments within a group share that group's weight, either equally or based on manual 'Weight in Group' values.";
 
-  // Main component render
+  // Main render
   return (
     <div className="space-y-8">
       {/* Course Header */}
@@ -370,7 +186,6 @@ const CourseView: React.FC = () => {
         {/* Assignment Groups Section */}
         <div className="bg-white p-5 shadow rounded-lg border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200 flex items-center gap-2">
-            {" "}
             Assignment Groups
             <span
               className="text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -378,8 +193,7 @@ const CourseView: React.FC = () => {
               data-tooltip-content={groupInfoTooltipContent}
               data-tooltip-place="top"
             >
-              {" "}
-              <FaInfoCircle />{" "}
+              <FaInfoCircle />
             </span>
           </h3>
           <GroupManager
@@ -392,8 +206,7 @@ const CourseView: React.FC = () => {
         {/* Grade Cutoffs Section */}
         <div className="bg-white p-5 shadow rounded-lg border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b border-gray-200">
-            {" "}
-            Grade Cutoffs{" "}
+            Grade Cutoffs
           </h3>
           <GradeCutoffsEditor
             currentCutoffs={course.gradeCutoffs || []}
@@ -419,4 +232,5 @@ const CourseView: React.FC = () => {
     </div>
   );
 };
+
 export default CourseView;
