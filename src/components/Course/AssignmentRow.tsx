@@ -164,7 +164,6 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         focusCell(nextRowIndex, currentFieldName);
       } else if (nextRowIndex === totalRows && currentFieldName !== "actions") {
         onAddRowBelow();
-        focusCell(nextRowIndex, currentFieldName);
       }
     }
   };

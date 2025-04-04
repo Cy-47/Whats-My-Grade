@@ -138,7 +138,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
         if (focusNew) {
           setTimeout(() => {
             const newRowInput = document.querySelector(
-              `[data-assignment-id="${newDocRef.id}"] [data-field-name="name"]`
+              `[data-assignment-id="${newDocRef.id}"][data-field-name="name"]`
             ) as HTMLInputElement;
             newRowInput?.focus();
             newRowInput?.select();
