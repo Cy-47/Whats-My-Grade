@@ -1,21 +1,9 @@
-import React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import AssignmentRow from "./AssignmentRow";
-import { Assignment, AssignmentGroup } from "../../types";
+import AssignmentRow, { AssignmentRowProps } from "./AssignmentRow"; // Import AssignmentRowProps
 import { FaGripVertical } from "react-icons/fa";
 
-interface RowProps {
-  assignment: Assignment;
-  rowIndex: number;
-  totalRows: number;
-  groups: AssignmentGroup[];
-  onSave: (assignmentId: string, updatedData: Partial<Assignment>) => void;
-  courseId: string;
-  onAddRowBelow: () => void;
-  effectiveWeight: number | null;
-  groupUsesManualWeight: boolean;
-}
+interface RowProps extends Omit<AssignmentRowProps, "id"> {} // Remove `id` from RowProps
 
 interface SortableRowProps {
   id: string;

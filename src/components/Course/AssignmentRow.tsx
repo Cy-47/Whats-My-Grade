@@ -22,7 +22,7 @@ function throttle<T extends (...args: any[]) => void>(
 }
 
 // Props definition for the AssignmentRow component
-interface AssignmentRowProps {
+export interface AssignmentRowProps {
   assignment: Assignment;
   rowIndex: number;
   totalRows: number;
@@ -32,6 +32,7 @@ interface AssignmentRowProps {
   onAddRowBelow: () => void;
   groupUsesManualWeight: boolean;
   effectiveWeight: number | null;
+  onDelete: (assignmentId: string) => void; // Notify parent about deletion
 }
 
 const AssignmentRow: React.FC<AssignmentRowProps> = ({
@@ -44,6 +45,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
   onAddRowBelow,
   groupUsesManualWeight,
   effectiveWeight,
+  onDelete,
 }) => {
   const { currentUser } = useAuth();
 
@@ -162,6 +164,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         focusCell(nextRowIndex, currentFieldName);
       } else if (nextRowIndex === totalRows && currentFieldName !== "actions") {
         onAddRowBelow();
+        focusCell(nextRowIndex, currentFieldName);
       }
     }
   };
@@ -193,6 +196,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
         `users/${currentUser.uid}/courses/${courseId}/assignments/${assignment.id}`
       );
       await deleteDoc(assignmentRef);
+      onDelete(assignment.id); // Notify parent about the deletion
     } catch (error) {
       console.error("Error deleting assignment:", error);
       alert("Failed to delete.");

@@ -9,6 +9,7 @@ import {
   getDocs,
   query,
   orderBy,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -111,7 +112,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
           db,
           `users/${currentUser.uid}/courses/${courseId}/assignments`
         );
-        const newDocRef = await addDoc(assignmentsCol, {
+        const newAssignment = {
           courseId: courseId,
           userId: currentUser.uid,
           name: "New Assignment",
@@ -120,11 +121,19 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
           weight: 0,
           deadline: null,
           isDropped: false,
+          isExtraCredit: false,
           groupId: null,
           relativeWeightInGroup: null,
           createdAt: serverTimestamp(),
           displayOrder: highestOrder,
-        });
+        };
+        const newDocRef = await addDoc(assignmentsCol, newAssignment);
+
+        // Update local state with the new assignment
+        setOrderedAssignments((prev) => [
+          ...prev,
+          { id: newDocRef.id, ...newAssignment, createdAt: Timestamp.now() }, // Use Firestore's Timestamp
+        ]);
 
         if (focusNew) {
           setTimeout(() => {
@@ -159,6 +168,13 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
       console.error("Error updating assignment:", error);
       alert("Failed to save changes.");
     }
+  };
+
+  // Callback to handle assignment deletion
+  const handleDeleteAssignment = (assignmentId: string) => {
+    setOrderedAssignments((prevAssignments) =>
+      prevAssignments.filter((assignment) => assignment.id !== assignmentId)
+    );
   };
 
   return (
@@ -225,7 +241,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
               {orderedAssignments.map((assignment, index) => (
                 <SortableAssignmentRow
                   key={assignment.id}
-                  id={assignment.id}
+                  id={assignment.id} // Pass `id` separately
                   rowProps={{
                     assignment,
                     rowIndex: index,
@@ -240,6 +256,7 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
                       groups
                     ),
                     groupUsesManualWeight: false,
+                    onDelete: handleDeleteAssignment,
                   }}
                 />
               ))}
