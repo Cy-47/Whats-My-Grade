@@ -33,6 +33,12 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     field: keyof AssignmentGroup;
   } | null>(null);
 
+  /**
+   * Updates a single field of an assignment group.
+   * @param groupId - ID of the group to update.
+   * @param field - Field name to update.
+   * @param value - New value for the field.
+   */
   const handleGroupFieldChange = async (
     groupId: string,
     field: keyof AssignmentGroup,
@@ -55,7 +61,9 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     setEditingField(null);
   };
 
-  // Add a new group to Firestore
+  /**
+   * Adds a new assignment group to Firestore.
+   */
   const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
@@ -95,7 +103,11 @@ const GroupManager: React.FC<GroupManagerProps> = ({
     }
   };
 
-  // Delete a group from Firestore (with safety check)
+  /**
+   * Deletes an assignment group from Firestore after validation.
+   * @param groupId - ID of the group to delete.
+   * @param groupName - Name of the group to delete.
+   */
   const handleDeleteGroup = async (groupId: string, groupName: string) => {
     if (!currentUser) {
       alert("Not logged in.");

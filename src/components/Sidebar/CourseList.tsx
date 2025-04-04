@@ -22,6 +22,22 @@ const defaultGradeCutoffs: GradeCutoff[] = [
   { id: "cutoff-f", grade: "F", minPercentage: 0 },
 ];
 
+/**
+ * CourseList Component
+ *
+ * Sidebar component that displays a list of the user's courses
+ * and provides functionality to add new courses.
+ *
+ * Features:
+ * - Real-time course listing from Firestore
+ * - Add new courses
+ * - Navigate between courses
+ * - Default grade cutoffs for new courses
+ */
+
+/**
+ * Component for displaying and managing the user's course list.
+ */
 const CourseList: React.FC = () => {
   const { currentUser } = useAuth();
   const { courseId: activeCourseId } = useParams<{ courseId?: string }>();
@@ -58,6 +74,10 @@ const CourseList: React.FC = () => {
     return unsubscribe;
   }, [currentUser]);
 
+  /**
+   * Handles the form submission to add a new course.
+   * Creates a new course document in Firestore and navigates to it.
+   */
   const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !newCourseName.trim() || isAdding) return;

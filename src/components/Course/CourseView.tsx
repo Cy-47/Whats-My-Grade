@@ -32,6 +32,23 @@ import GradeDisplay from "./GradeDisplay";
 import GroupManager from "./GroupManager";
 import GradeCutoffsEditor from "./GradeCutoffsEditor";
 
+/**
+ * CourseView Component
+ *
+ * Displays the main view for a single course, including course details,
+ * overall grade, assignment table, and management sections for assignment groups
+ * and grade cutoffs.
+ *
+ * Features:
+ * - Real-time data fetching from Firestore
+ * - Course editing (name, deletion)
+ * - Grade calculation and display
+ * - Integration with assignment table, groups, and cutoffs
+ */
+
+/**
+ * Main course view component that coordinates all course-related features.
+ */
 const CourseView: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { currentUser } = useAuth();
@@ -48,7 +65,10 @@ const CourseView: React.FC = () => {
     setIsEditingCourseName(false);
   };
 
-  // --- Data Fetching Effect ---
+  /**
+   * Fetches course, assignments, and groups data from Firestore.
+   * Sets up real-time listeners for updates.
+   */
   useEffect(() => {
     if (!currentUser || !courseId) {
       setLoading(false);
@@ -163,17 +183,26 @@ const CourseView: React.FC = () => {
     return { assignments, groups, gradeCutoffs: safeCutoffs };
   }, [assignments, groups, course]);
 
+  /**
+   * Calculates the overall grade percentage for the course.
+   */
   const overallPercentage = useMemo(() => {
     if (!courseData) return null;
     return calculateOverallGrade(courseData.assignments, courseData.groups);
   }, [courseData]);
 
+  /**
+   * Determines the letter grade based on the overall percentage and grade cutoffs.
+   */
   const letterGrade = useMemo(() => {
     if (overallPercentage === null || !courseData) return "-";
     return getLetterGrade(overallPercentage, courseData.gradeCutoffs);
   }, [overallPercentage, courseData]);
 
-  // --- Callback for Saving Grade Cutoffs ---
+  /**
+   * Saves updated grade cutoffs to Firestore.
+   * @param newCutoffs - The updated grade cutoffs array.
+   */
   const handleSaveCutoffs = useCallback(
     async (newCutoffs: GradeCutoff[]) => {
       if (!currentUser || !courseId || !course) {
@@ -195,7 +224,9 @@ const CourseView: React.FC = () => {
     [currentUser, courseId, course]
   ); // Dependencies for the callback
 
-  // --- Callback for Deleting Course ---
+  /**
+   * Deletes the current course and navigates back to the home page.
+   */
   const handleDeleteCourse = useCallback(async () => {
     // Guards and confirmation
     if (

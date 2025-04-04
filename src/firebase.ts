@@ -1,3 +1,14 @@
+/**
+ * Firebase Configuration
+ *
+ * Initializes and exports Firebase services used throughout the application:
+ * - Firebase app instance
+ * - Firestore database
+ * - Authentication
+ *
+ * Environment variables are loaded from .env file with the REACT_APP_ prefix.
+ */
+
 // src/firebase.ts
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";

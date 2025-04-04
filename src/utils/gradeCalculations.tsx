@@ -22,36 +22,61 @@ const isValidWeight = (weight: any): boolean => {
   return typeof weight === "number" && weight > 0;
 };
 
-// Export function to calculate an assignment's effective weight contribution
+/**
+ * Calculates an assignment's effective weight contribution to the overall grade.
+ *
+ * The effective weight differs based on several factors:
+ * 1. For non-grouped assignments: Uses direct weight value assigned to the assignment
+ * 2. For grouped assignments: Derives weight from the group's total weight and the assignment's
+ *    position within that group, using one of two methods:
+ *    a. Equal distribution: Each non-dropped assignment gets an equal portion of the group's weight
+ *    b. Manual weighting: Assignments with specified relative weights get proportionate shares
+ *       of the group's weight based on those values
+ *
+ * @param assignment - The assignment to calculate effective weight for
+ * @param allAssignments - All assignments in the course (needed for group calculations)
+ * @param groups - All assignment groups in the course
+ * @returns The calculated effective weight as a number, or null if not calculable
+ */
 export const calculateEffectiveWeight = (
   assignment: Assignment,
   allAssignments: Assignment[],
   groups: AssignmentGroup[]
 ): number | null => {
-  if (assignment.isDropped) return 0; // Dropped items have 0 effective weight
+  // Dropped assignments always have zero weight contribution
+  if (assignment.isDropped) return 0;
 
+  // Case 1: Non-grouped assignment - use direct weight value
   if (!assignment.groupId) {
     // Not grouped
     return typeof assignment.weight === "number" ? assignment.weight : null;
   }
 
-  // Grouped assignment logic
+  // Case 2: Grouped assignment logic
   const group = groups.find((g) => g.id === assignment.groupId);
+
+  // Safety check: Ensure group exists and has valid weight
   if (!group || typeof group.weight !== "number" || group.weight <= 0) return 0;
 
+  // Get all non-dropped assignments in this group
   const groupAssignments = allAssignments.filter(
     (a) => a.groupId === group.id && !a.isDropped
   );
   const numberOfAssignmentsInGroup = groupAssignments.length;
+
+  // If no active assignments in group, weight is zero
   if (numberOfAssignmentsInGroup === 0) return 0;
 
+  // Detect if this group uses manual relative weighting
+  // (true if any non-dropped assignment has a relative weight set)
   const groupUsesManualWeight = groupAssignments.some(
     (a) =>
       typeof a.relativeWeightInGroup === "number" && a.relativeWeightInGroup > 0
   );
 
   if (groupUsesManualWeight) {
-    // Manual relative weighting
+    // Case 2a: Manual relative weighting within group
+    // Sum up all relative weights in the group
     let totalRelativeWeightInGroup = 0;
     groupAssignments.forEach((a) => {
       const relWeight =
@@ -62,8 +87,11 @@ export const calculateEffectiveWeight = (
         totalRelativeWeightInGroup += relWeight;
       }
     });
-    if (totalRelativeWeightInGroup === 0) return 0; // Avoid division by zero
 
+    // Safety check: Avoid division by zero
+    if (totalRelativeWeightInGroup === 0) return 0;
+
+    // Calculate the assignment's proportional share of the group weight
     const assignmentRelativeWeight =
       typeof assignment.relativeWeightInGroup === "number"
         ? assignment.relativeWeightInGroup
@@ -72,29 +100,42 @@ export const calculateEffectiveWeight = (
       group.weight * (assignmentRelativeWeight / totalRelativeWeightInGroup)
     );
   } else {
-    // Equal weighting
+    // Case 2b: Equal weighting - each assignment gets the same portion of group weight
     return group.weight / numberOfAssignmentsInGroup;
   }
 };
 
-// Calculate an assignment's contribution to the overall grade
+/**
+ * Calculates an assignment's contribution to the overall grade based on:
+ * 1. The percentage achieved on the assignment (score/totalScore)
+ * 2. The effective weight of the assignment toward the final grade
+ *
+ * @param assignment - The assignment to calculate the contribution for
+ * @param weight - The effective weight of the assignment (pre-calculated)
+ * @returns An object containing points obtained and points total for grade calculation
+ */
 const calculateAssignmentContribution = (
   assignment: Assignment,
   weight: number
 ): { pointsObtained: number; pointsTotal: number } => {
+  // Calculate the percentage achieved on this assignment (null if can't calculate)
   const percentage = safePercentage(assignment.score, assignment.totalScore);
 
   // Always use the calculated weight passed to this function,
   // not any stored effectiveWeight
   const effectiveWeight = weight;
 
+  // If we can't calculate a valid percentage or weight, contribute nothing
   if (percentage === null || !isValidWeight(effectiveWeight)) {
     return { pointsObtained: 0, pointsTotal: 0 };
   }
 
   return {
+    // Points obtained = percentage achieved × effective weight
     pointsObtained: percentage * effectiveWeight,
-    // Only count non-extra credit assignments towards effective weight
+
+    // For grade denominator: only count non-extra credit assignments
+    // (extra credit adds to numerator only, not denominator)
     pointsTotal: assignment.isExtraCredit ? 0 : effectiveWeight,
   };
 };

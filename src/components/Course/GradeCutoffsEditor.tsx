@@ -4,6 +4,21 @@ import { GradeCutoff } from "../../types";
 import { v4 as uuidv4 } from "uuid"; // For unique keys
 import { FaTimes, FaPlus } from "react-icons/fa";
 
+/**
+ * GradeCutoffsEditor Component
+ *
+ * Allows editing grade cutoffs (e.g., A >= 90%, B >= 80%) for a course.
+ * Changes to cutoffs affect the displayed letter grade.
+ *
+ * Features:
+ * - Add, edit, and remove grade cutoffs
+ * - Validation to ensure cutoffs make sense
+ * - Auto-sorting by percentage
+ */
+
+/**
+ * Component for editing grade cutoffs for a course.
+ */
 interface GradeCutoffsEditorProps {
   currentCutoffs: GradeCutoff[];
   onSave: (newCutoffs: GradeCutoff[]) => Promise<void>; // Callback to save
@@ -21,7 +36,12 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
     setCutoffs(currentCutoffs.map((c) => ({ ...c, id: c.id || uuidv4() })));
   }, [currentCutoffs]);
 
-  // Handle changes in grade letter or percentage inputs
+  /**
+   * Handles changes to a specific grade cutoff field.
+   * @param id - ID of the cutoff being edited.
+   * @param field - Field name being updated.
+   * @param value - New value for the field.
+   */
   const handleCutoffChange = (
     id: string,
     field: "grade" | "minPercentage",
@@ -63,7 +83,9 @@ const GradeCutoffsEditor: React.FC<GradeCutoffsEditorProps> = ({
     );
   };
 
-  // Validate and save the current cutoff list
+  /**
+   * Saves the updated grade cutoffs to Firestore after validation.
+   */
   const handleSaveClick = async () => {
     setIsSaving(true); // Indicate saving process
     // Basic validation

@@ -266,7 +266,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
       <td className="px-3 py-1.5 align-middle border-r border-gray-300 text-center">
         {isGrouped ? (
           <span className="block w-full text-sm text-gray-500 italic text-center">
-            {effectiveWeight !== null ? `${effectiveWeight.toFixed(2)}` : "N/A"}
+            {effectiveWeight !== null ? `${effectiveWeight}` : "N/A"}
           </span>
         ) : (
           <input

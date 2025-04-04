@@ -31,6 +31,22 @@ interface AssignmentTableProps {
   groups: AssignmentGroup[];
 }
 
+/**
+ * AssignmentTable Component
+ *
+ * Displays and manages assignments for a course in a spreadsheet-like interface.
+ *
+ * Features:
+ * - Add, edit, and delete assignments
+ * - Drag-and-drop reordering
+ * - Mark assignments as dropped or extra credit
+ * - Group assignment selection
+ * - Keyboard navigation for efficient data entry
+ */
+
+/**
+ * Component for displaying and managing course assignments.
+ */
 const AssignmentTable: React.FC<AssignmentTableProps> = ({
   courseId,
   assignments,
@@ -65,7 +81,10 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     fetchAssignments();
   }, [currentUser, courseId]);
 
-  // Handle drag end event
+  /**
+   * Handles assignment reordering through drag and drop.
+   * Updates the display order in Firestore.
+   */
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -97,7 +116,10 @@ const AssignmentTable: React.FC<AssignmentTableProps> = ({
     }
   };
 
-  // Callback to add a new assignment
+  /**
+   * Adds a new assignment to the course.
+   * @param focusNew - Whether to focus on the new assignment after adding.
+   */
   const handleAddAssignment = useCallback(
     async (focusNew = false) => {
       if (!currentUser || !courseId) return;
