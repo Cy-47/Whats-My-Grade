@@ -4,7 +4,7 @@
     // "indexes": "firestore.indexes.json" /* Optional: Firestore will prompt if indexes are needed */
   },
   "hosting": {
-    "site": "whats-my-grade",
+    "site": "whatsmygrade",
     "public": "build" /* Point to the production build directory */,
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
